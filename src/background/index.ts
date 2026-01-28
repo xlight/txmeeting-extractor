@@ -138,8 +138,58 @@ async function handleAPIResponse(payload: {
 
     // 根据API类型存储响应
     if (apiType === 'minutes/detail') {
-      cache.minutesDetail = payload.data as MinutesDetailResponse;
-      console.log('[TXMeeting Background] ✅ 已存储 minutes/detail 响应');
+      const newResponse = payload.data as MinutesDetailResponse;
+
+      // 检查是否已有数据（分页合并）
+      if (
+        cache.minutesDetail &&
+        cache.minutesDetail.minutes &&
+        newResponse.minutes
+      ) {
+        console.log('[TXMeeting Background] 🔄 合并分页数据...');
+
+        // 合并段落数据
+        const existingParagraphs = cache.minutesDetail.minutes.paragraphs || [];
+        const newParagraphs = newResponse.minutes.paragraphs || [];
+
+        cache.minutesDetail.minutes.paragraphs = [
+          ...existingParagraphs,
+          ...newParagraphs,
+        ];
+
+        // 更新其他字段（使用最新的值）
+        cache.minutesDetail.minutes.keywords =
+          newResponse.minutes.keywords || cache.minutesDetail.minutes.keywords;
+        cache.minutesDetail.minutes.chapters =
+          newResponse.minutes.chapters || cache.minutesDetail.minutes.chapters;
+        cache.minutesDetail.minutes.summary =
+          newResponse.minutes.summary || cache.minutesDetail.minutes.summary;
+        cache.minutesDetail.minutes.action_items =
+          newResponse.minutes.action_items ||
+          cache.minutesDetail.minutes.action_items;
+
+        // 更新 more 标志
+        cache.minutesDetail.more = newResponse.more;
+
+        console.log(
+          '[TXMeeting Background] 📊 合并后段落数:',
+          cache.minutesDetail.minutes.paragraphs.length
+        );
+        console.log(
+          '[TXMeeting Background] 📄 还有更多数据:',
+          cache.minutesDetail.more
+        );
+      } else {
+        // 第一次接收数据
+        cache.minutesDetail = newResponse;
+        console.log(
+          '[TXMeeting Background] ✅ 已存储 minutes/detail 响应（首次）'
+        );
+        console.log(
+          '[TXMeeting Background] 📄 还有更多数据:',
+          newResponse.more
+        );
+      }
     } else if (apiType === 'common-record-info') {
       cache.commonRecordInfo = payload.data as CommonRecordInfoResponse;
       console.log('[TXMeeting Background] ✅ 已存储 common-record-info 响应');
@@ -151,11 +201,22 @@ async function handleAPIResponse(payload: {
     console.log('[TXMeeting Background] 📊 缓存状态:', {
       hasMinutesDetail: !!cache.minutesDetail,
       hasCommonRecordInfo: !!cache.commonRecordInfo,
+      minutesDetailHasMore: cache.minutesDetail?.more,
     });
 
-    // 尝试提取数据（即使只有一个API响应也尝试）
+    // 检查是否所有数据都已加载完成
+    const isMinutesDetailComplete =
+      cache.minutesDetail && !cache.minutesDetail.more;
+    const shouldExtractData = isMinutesDetailComplete || cache.commonRecordInfo;
+
+    if (!shouldExtractData) {
+      console.log('[TXMeeting Background] ⏳ 等待更多分页数据...');
+      return;
+    }
+
+    // 尝试提取数据
     if (cache.minutesDetail || cache.commonRecordInfo) {
-      console.log('[TXMeeting Background] 🔄 开始提取会议数据...');
+      console.log('[TXMeeting Background] 🔄 开始提取完整会议数据...');
 
       const meetingData = extractMeetingData({
         minutesDetail: cache.minutesDetail,
