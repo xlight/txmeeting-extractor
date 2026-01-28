@@ -115,6 +115,8 @@ async function handleAPIResponse(payload: {
       return;
     }
 
+    console.log('[TXMeeting Background] 📋 识别到 API 类型:', apiType);
+
     // 提取会议标识（从URL参数中）
     const meetingKey = extractMeetingKeyFromURL(payload.url);
     if (!meetingKey) {
@@ -122,24 +124,39 @@ async function handleAPIResponse(payload: {
       return;
     }
 
+    console.log('[TXMeeting Background] 🔑 会议标识:', meetingKey);
+
     // 获取或创建临时缓存
     let cache = apiResponseCache.get(meetingKey);
     if (!cache) {
       cache = { timestamp: Date.now() };
       apiResponseCache.set(meetingKey, cache);
+      console.log('[TXMeeting Background] 🆕 创建新缓存');
+    } else {
+      console.log('[TXMeeting Background] 📦 使用现有缓存');
     }
 
     // 根据API类型存储响应
     if (apiType === 'minutes/detail') {
       cache.minutesDetail = payload.data as MinutesDetailResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 minutes/detail 响应');
     } else if (apiType === 'common-record-info') {
       cache.commonRecordInfo = payload.data as CommonRecordInfoResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 common-record-info 响应');
     }
 
     cache.timestamp = Date.now();
 
-    // 尝试提取完整数据（如果两个API都有响应）
+    // 显示当前缓存状态
+    console.log('[TXMeeting Background] 📊 缓存状态:', {
+      hasMinutesDetail: !!cache.minutesDetail,
+      hasCommonRecordInfo: !!cache.commonRecordInfo,
+    });
+
+    // 尝试提取数据（即使只有一个API响应也尝试）
     if (cache.minutesDetail || cache.commonRecordInfo) {
+      console.log('[TXMeeting Background] 🔄 开始提取会议数据...');
+
       const meetingData = extractMeetingData({
         minutesDetail: cache.minutesDetail,
         commonRecordInfo: cache.commonRecordInfo,
@@ -147,7 +164,22 @@ async function handleAPIResponse(payload: {
 
       if (!meetingData) {
         console.warn('[TXMeeting Background] ⚠️ 无法提取会议数据');
+        console.warn('[TXMeeting Background] 调试信息:', {
+          minutesDetailCode: (cache.minutesDetail as any)?.code,
+          commonRecordInfoCode: (cache.commonRecordInfo as any)?.code,
+          minutesDetailHasMinutes: !!(cache.minutesDetail as any)?.minutes,
+          commonRecordInfoHasData: !!(cache.commonRecordInfo as any)?.data,
+        });
         return;
+      }
+
+      // 从 URL 中提取会议 ID 信息（补充 metadata）
+      const ids = extractMeetingIdsFromURL(payload.url);
+      if (ids.meetingId && !meetingData.metadata.meeting_id) {
+        meetingData.metadata.meeting_id = ids.meetingId;
+      }
+      if (ids.recordingId && !meetingData.metadata.recording_id) {
+        meetingData.metadata.recording_id = ids.recordingId;
       }
 
       console.log(
@@ -236,6 +268,30 @@ function extractMeetingKeyFromURL(url: string): string | null {
     return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * 从URL中提取会议ID和录制ID
+ */
+function extractMeetingIdsFromURL(url: string): {
+  meetingId?: string;
+  recordingId?: string;
+} {
+  try {
+    const urlObj = new URL(url);
+    return {
+      meetingId:
+        urlObj.searchParams.get('meeting_id') ||
+        urlObj.searchParams.get('meetingId') ||
+        undefined,
+      recordingId:
+        urlObj.searchParams.get('recording_id') ||
+        urlObj.searchParams.get('recordingId') ||
+        undefined,
+    };
+  } catch {
+    return {};
   }
 }
 
