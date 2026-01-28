@@ -105,13 +105,31 @@ export function extractMeetingData(apiResponses: {
   commonRecordInfo?: CommonRecordInfoResponse;
 }): MeetingData | null {
   try {
+    console.log('[Extractor] 开始提取会议数据...');
+    console.log('[Extractor] 输入:', {
+      hasMinutesDetail: !!apiResponses.minutesDetail,
+      hasCommonRecordInfo: !!apiResponses.commonRecordInfo,
+    });
+
     const minutesData = apiResponses.minutesDetail
       ? extractFromMinutesDetail(apiResponses.minutesDetail)
       : {};
 
+    console.log('[Extractor] minutesData 提取结果:', {
+      hasMetadata: !!minutesData.metadata,
+      hasSummary: !!minutesData.summary,
+      transcriptCount: minutesData.transcript?.length || 0,
+      keywordsCount: minutesData.keywords?.length || 0,
+    });
+
     const recordData = apiResponses.commonRecordInfo
       ? extractFromCommonRecordInfo(apiResponses.commonRecordInfo)
       : {};
+
+    console.log('[Extractor] recordData 提取结果:', {
+      hasMetadata: !!recordData.metadata,
+      participantsCount: recordData.participants?.length || 0,
+    });
 
     // 合并数据，recordData 的 metadata 优先
     const mergedData: MeetingData = {
@@ -127,12 +145,24 @@ export function extractMeetingData(apiResponses: {
       captured_at: Date.now(),
     };
 
-    // 验证必要字段
-    if (!mergedData.metadata.meeting_id && !mergedData.metadata.recording_id) {
-      console.warn('[Extractor] 无法提取有效的会议标识');
+    console.log('[Extractor] 合并后的 metadata:', mergedData.metadata);
+
+    // 验证必要字段（如果两个都没有，说明数据可能有问题）
+    // 但我们允许在 background script 中稍后补充这些 ID
+    const hasAnyId =
+      mergedData.metadata.meeting_id || mergedData.metadata.recording_id;
+    const hasAnyData =
+      mergedData.transcript.length > 0 ||
+      !!mergedData.summary ||
+      (mergedData.keywords && mergedData.keywords.length > 0);
+
+    if (!hasAnyId && !hasAnyData) {
+      console.warn('[Extractor] 无法提取有效的会议标识或内容');
+      console.warn('[Extractor] metadata 详情:', mergedData.metadata);
       return null;
     }
 
+    console.log('[Extractor] ✅ 数据提取成功');
     return mergedData;
   } catch (error) {
     console.error('[Extractor] 提取会议数据失败:', error);
