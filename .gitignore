@@ -3,7 +3,7 @@ node_modules/
 dist/
 
 .opencode/
-openspec
+#openspec/
 
 # Build outputs
 *.log
