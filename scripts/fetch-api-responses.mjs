@@ -32,59 +32,239 @@ const CONFIG = {
   ),
 };
 
-// API 优先级配置
+// API 优先级配置 - 按数据价值排序
 const API_PRIORITY = {
+  // 🔴 Critical - 核心会议数据 (必须实现)
   '/wemeet-cloudrecording-webapi/v1/minutes/detail': {
     priority: '🔴 Critical',
+    dataValue: 5,
     order: 1,
     filename: 'minutes-detail.md',
+    purpose: '获取会议纪要详情（转写、摘要、行动项）',
   },
   '/wemeet-tapi/v2/meetlog/public/detail/common-record-info': {
     priority: '🔴 Critical',
+    dataValue: 5,
     order: 2,
     filename: 'common-record-info.md',
+    purpose: '获取会议录制基本信息（标题、时长、参与者）',
   },
-  '/wemeet-tapi/v2/meetlog/public/record-detail/uni-record-id': {
-    priority: '🟡 Important',
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-full-summary': {
+    priority: '🔴 Critical',
+    dataValue: 4,
     order: 3,
-    filename: 'uni-record-id.md',
+    filename: 'get-full-summary.md',
+    purpose: '获取完整 AI 摘要（简要、详细、超详细版本）',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-chapter': {
+    priority: '🔴 Critical',
+    dataValue: 4,
+    order: 4,
+    filename: 'get-chapter.md',
+    purpose: '获取会议章节/段落结构',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-time-line': {
+    priority: '🔴 Critical',
+    dataValue: 4,
+    order: 5,
+    filename: 'get-time-line.md',
+    purpose: '获取会议时间轴事件',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-smart-topic': {
+    priority: '🔴 Critical',
+    dataValue: 3,
+    order: 6,
+    filename: 'get-smart-topic.md',
+    purpose: '获取智能话题提取结果',
+  },
+
+  // 🟡 Important - 增强功能 (应该实现)
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-mul-summary-and-todo': {
+    priority: '🟡 Important',
+    dataValue: 4,
+    order: 7,
+    filename: 'get-mul-summary-and-todo.md',
+    purpose: '获取多语言摘要和待办事项列表',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-critical-node': {
+    priority: '🟡 Important',
+    dataValue: 3,
+    order: 8,
+    filename: 'get-critical-node.md',
+    purpose: '获取关键时刻/决策点',
   },
   '/wemeet-tapi/v2/meetlog/public/record-detail/get-multi-record-info': {
     priority: '🟡 Important',
-    order: 4,
+    dataValue: 3,
+    order: 9,
     filename: 'get-multi-record-info.md',
+    purpose: '获取多段录制信息',
   },
   '/wemeet-tapi/v2/meetlog/public/record-detail/get-multi-record-timeline': {
     priority: '🟡 Important',
-    order: 5,
+    dataValue: 3,
+    order: 10,
     filename: 'get-multi-record-timeline.md',
+    purpose: '获取录制时间轴信息',
   },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-multi-record-file': {
+    priority: '🟡 Important',
+    dataValue: 3,
+    order: 11,
+    filename: 'get-multi-record-file.md',
+    purpose: '获取录制文件下载链接',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/uni-record-id': {
+    priority: '🟡 Important',
+    dataValue: 2,
+    order: 12,
+    filename: 'uni-record-id.md',
+    purpose: '通过分享 ID 获取统一录制 ID',
+  },
+
+  // 🟢 Optional - 配置和权限 (可选实现)
   '/wemeet-cloudrecording-webapi/v1/minutes/config': {
     priority: '🟢 Optional',
-    order: 6,
+    dataValue: 1,
+    order: 13,
     filename: 'minutes-config.md',
+    purpose: '获取会议纪要配置信息',
   },
   '/wemeet-cloudrecording-webapi/v1/sign': {
     priority: '🟢 Optional',
-    order: 7,
+    dataValue: 1,
+    order: 14,
     filename: 'sign.md',
+    purpose: '获取访问签名',
   },
   '/wemeet-tapi/v2/meetlog/permission/get-cfg': {
     priority: '🟢 Optional',
-    order: 8,
+    dataValue: 1,
+    order: 15,
     filename: 'permission-get-cfg.md',
+    purpose: '获取权限配置',
   },
   '/wemeet-tapi/v2/meetlog/public/record-detail/get-cfg': {
     priority: '🟢 Optional',
-    order: 9,
+    dataValue: 1,
+    order: 16,
     filename: 'record-detail-get-cfg.md',
+    purpose: '获取录制详情配置',
   },
   '/v2/api/record/get-token': {
     priority: '🟢 Optional',
-    order: 10,
+    dataValue: 1,
+    order: 17,
     filename: 'get-token.md',
+    purpose: '获取录制访问令牌',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/get-member-cfg': {
+    priority: '🟢 Optional',
+    dataValue: 1,
+    order: 18,
+    filename: 'get-member-cfg.md',
+    purpose: '获取成员配置',
+  },
+  '/wemeet-tapi/v1/aihelper/record/aihelper_entry_status': {
+    priority: '🟢 Optional',
+    dataValue: 1,
+    order: 19,
+    filename: 'aihelper-entry-status.md',
+    purpose: '获取 AI 助手入口状态',
+  },
+  '/wemeet-tapi/v2/meetlog/subtitle-feedback/get-cfg': {
+    priority: '🟢 Optional',
+    dataValue: 1,
+    order: 20,
+    filename: 'subtitle-feedback-get-cfg.md',
+    purpose: '获取字幕反馈配置',
+  },
+
+  // ⚫ Skip - 非核心/辅助 API (跳过)
+  '/wemeet-webapi/v2/account/login/refresh-token': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'refresh-token.md',
+    purpose: '刷新认证令牌（认证专用，无会议数据）',
+  },
+  '/wemeet-webapi/v2/corp/corp/corp-pay-tag': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'corp-pay-tag.md',
+    purpose: '企业付费标签（无关会议内容）',
+  },
+  '/wemeet-tapi/v2/wemeet_cowork_config/get-h5-common-config': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'get-h5-common-config.md',
+    purpose: '通用 H5 配置（非会议特定）',
+  },
+  '/wemeet-tapi/v2/meetlog/public/detail/user-visited': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'user-visited.md',
+    purpose: '用户访问统计埋点（无会议数据）',
+  },
+  '/wemeet-tapi/v2/meetlog/public/report/behavior-log': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'behavior-log.md',
+    purpose: '行为日志统计埋点（无会议数据）',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/query_smart_reddot_task': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'query-smart-reddot-task.md',
+    purpose: '查询智能红点任务（通知提示）',
+  },
+  '/wemeet-tapi/v2/meetlog/public/record-detail/query-multi-record-gray': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'query-multi-record-gray.md',
+    purpose: '多段录制灰度功能开关（功能开关）',
+  },
+  '/wemeet-tapi//v2/meetlog/public/record-detail/corp-sdk-record-info': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'corp-sdk-record-info.md',
+    purpose: '企业 SDK 录制信息（SDK 专用）',
+  },
+  '/wemeet-tapi//v1/ainotes-public/get_config_public': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'get-config-public.md',
+    purpose: 'AI 笔记公共配置（通用配置）',
+  },
+  '/wemeet-cloudrecording-webapi/v1/records/events-heartbeat': {
+    priority: '⚫ Skip',
+    dataValue: 0,
+    order: 99,
+    filename: 'events-heartbeat.md',
+    purpose: '事件心跳保活（心跳请求）',
   },
 };
+
+/**
+ * 检查文档是否已存在
+ */
+async function checkExistingDoc(filename) {
+  const filepath = path.join(CONFIG.outputDir, filename);
+  try {
+    await fs.access(filepath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 解析 fetch 请求字符串（使用 JSON.parse 而非 eval）
@@ -262,7 +442,10 @@ function generateMarkdown(request, response) {
   const url = new URL(request.url);
   const apiPath = url.pathname;
   const apiShortName = getApiShortName(request.url);
-  const priority = API_PRIORITY[apiPath]?.priority || '🟢 Optional';
+  const priorityConfig = API_PRIORITY[apiPath];
+  const priority = priorityConfig?.priority || '🟢 Optional';
+  const dataValue = priorityConfig?.dataValue || 1;
+  const purpose = priorityConfig?.purpose || '未知用途';
 
   // 解析查询参数
   const queryParams = {};
@@ -282,7 +465,9 @@ function generateMarkdown(request, response) {
 
   // 生成文档
   let md = `# API 响应文档：${apiShortName}\n\n`;
-  md += `**优先级**: ${priority}\n\n`;
+  md += `**优先级**: ${priority}  \n`;
+  md += `**数据价值**: ${'⭐'.repeat(dataValue)}  \n`;
+  md += `**用途**: ${purpose}  \n`;
   md += `**生成时间**: ${new Date().toISOString()}\n\n`;
   md += `---\n\n`;
 
@@ -291,7 +476,8 @@ function generateMarkdown(request, response) {
   md += `- **URL**: \`${apiPath}\`\n`;
   md += `- **完整 URL**: \`${request.url}\`\n`;
   md += `- **方法**: \`${request.method}\`\n`;
-  md += `- **用途**: ${getApiPurpose(apiPath)}\n\n`;
+  md += `- **用途**: ${purpose}\n`;
+  md += `- **数据价值**: ${'⭐'.repeat(dataValue)} (${dataValue}/5)\n\n`;
 
   // 请求参数
   md += `## 2. 请求参数\n\n`;
@@ -401,24 +587,11 @@ function generateDataStructureRows(data, prefix = '', depth = 0, maxDepth = 3) {
  * 获取 API 用途说明
  */
 function getApiPurpose(apiPath) {
-  const purposes = {
-    '/wemeet-cloudrecording-webapi/v1/minutes/detail':
-      '获取会议纪要详情（包含转写、摘要、行动项等）',
-    '/wemeet-tapi/v2/meetlog/public/detail/common-record-info':
-      '获取会议录制基本信息（标题、时长、参与者等）',
-    '/wemeet-tapi/v2/meetlog/public/record-detail/uni-record-id':
-      '通过分享 ID 获取统一录制 ID',
-    '/wemeet-tapi/v2/meetlog/public/record-detail/get-multi-record-info':
-      '获取多段录制信息',
-    '/wemeet-tapi/v2/meetlog/public/record-detail/get-multi-record-timeline':
-      '获取录制时间轴信息',
-    '/wemeet-cloudrecording-webapi/v1/minutes/config': '获取会议纪要配置信息',
-    '/wemeet-cloudrecording-webapi/v1/sign': '获取访问签名',
-    '/wemeet-tapi/v2/meetlog/permission/get-cfg': '获取权限配置',
-    '/wemeet-tapi/v2/meetlog/public/record-detail/get-cfg': '获取录制详情配置',
-    '/v2/api/record/get-token': '获取录制访问令牌',
-  };
-  return purposes[apiPath] || '未知用途';
+  const config = API_PRIORITY[apiPath];
+  if (config && config.purpose) {
+    return config.purpose;
+  }
+  return '未知用途（未配置）';
 }
 
 /**
@@ -477,6 +650,11 @@ async function saveMarkdown(apiPath, markdown) {
  */
 async function main() {
   console.log('🚀 开始捕获腾讯会议 API 响应\n');
+  console.log('📝 功能增强:');
+  console.log('  ✅ 智能跳过已存在的文档');
+  console.log('  ✅ 按数据价值优先级排序（⭐⭐⭐⭐⭐ > ⭐）');
+  console.log('  ✅ 自动推断 API 用途');
+  console.log('  ✅ 分类展示（Critical/Important/Optional/Skip）\n');
 
   // 1. 读取并解析请求列表
   console.log('📖 解析请求列表...');
@@ -491,22 +669,82 @@ async function main() {
       priority: API_PRIORITY[getApiPath(req.url)],
     }))
     .filter((item) => item.priority) // 只处理配置了优先级的 API
-    .sort((a, b) => a.priority.order - b.priority.order);
+    .sort((a, b) => {
+      // 先按数据价值排序，再按顺序
+      if (a.priority.dataValue !== b.priority.dataValue) {
+        return b.priority.dataValue - a.priority.dataValue;
+      }
+      return a.priority.order - b.priority.order;
+    });
 
-  console.log(`🎯 将处理 ${prioritizedRequests.length} 个优先 API:\n`);
-  prioritizedRequests.forEach((item, index) => {
-    console.log(
-      `  ${index + 1}. ${item.priority.priority} ${item.apiPath.split('/').pop()}`
-    );
-  });
-  console.log();
+  console.log(`🎯 将处理 ${prioritizedRequests.length} 个已配置 API:\n`);
 
-  // 3. 执行请求并生成文档
-  const results = [];
+  // 分组显示
+  const groups = {
+    '🔴 Critical': [],
+    '🟡 Important': [],
+    '🟢 Optional': [],
+    '⚫ Skip': [],
+  };
+
   for (const item of prioritizedRequests) {
+    groups[item.priority.priority].push(item);
+  }
+
+  for (const [groupName, items] of Object.entries(groups)) {
+    if (items.length > 0) {
+      console.log(
+        `${groupName} (${items.length} APIs, 数据价值: ${items[0].priority.dataValue}⭐)`
+      );
+      for (const item of items) {
+        const apiName = item.apiPath.split('/').pop();
+        console.log(`  - ${apiName}`);
+      }
+      console.log();
+    }
+  }
+
+  // 3. 检查已存在的文档
+  console.log('📂 检查已存在的文档...');
+  const existingDocs = [];
+  const missingDocs = [];
+
+  for (const item of prioritizedRequests) {
+    const exists = await checkExistingDoc(item.priority.filename);
+    if (exists) {
+      existingDocs.push(item);
+    } else {
+      missingDocs.push(item);
+    }
+  }
+
+  console.log(`  ✅ 已存在: ${existingDocs.length} 个文档`);
+  console.log(`  📝 待生成: ${missingDocs.length} 个文档\n`);
+
+  if (existingDocs.length > 0) {
+    console.log('已跳过以下文档（已存在）:');
+    for (const item of existingDocs) {
+      console.log(`  ⏭️  ${item.priority.priority} ${item.priority.filename}`);
+    }
+    console.log();
+  }
+
+  if (missingDocs.length === 0) {
+    console.log('✅ 所有文档均已生成！无需重复执行。\n');
+    return;
+  }
+
+  console.log(`🚀 开始生成 ${missingDocs.length} 个缺失文档...\n`);
+
+  // 4. 执行请求并生成文档
+  const results = [];
+  for (let i = 0; i < missingDocs.length; i++) {
+    const item = missingDocs[i];
     console.log(
-      `\n📡 [${item.priority.order}/${prioritizedRequests.length}] ${item.priority.priority} ${getApiShortName(item.request.url)}`
+      `\n📡 [${i + 1}/${missingDocs.length}] ${item.priority.priority} ${getApiShortName(item.request.url)}`
     );
+    console.log(`   📊 数据价值: ${'⭐'.repeat(item.priority.dataValue)}`);
+    console.log(`   🎯 用途: ${item.priority.purpose}`);
 
     const response = await executeRequest(item.request);
 
@@ -518,6 +756,7 @@ async function main() {
       filename,
       apiPath: item.apiPath,
       priority: item.priority.priority,
+      dataValue: item.priority.dataValue,
       status: response.status,
       success: !response.error,
     });
@@ -526,29 +765,35 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  // 4. 生成总结
+  // 5. 生成总结
   console.log('\n\n✅ API 响应捕获完成！\n');
   console.log('📊 处理结果:\n');
-  console.log('| 优先级 | API | 状态 | 文件 |');
-  console.log('|--------|-----|------|------|');
+  console.log('| 优先级 | 数据价值 | API | 状态 | 文件 |');
+  console.log('|--------|----------|-----|------|------|');
   results.forEach((r) => {
     const statusIcon = r.success ? '✅' : '❌';
+    const stars = '⭐'.repeat(r.dataValue);
     console.log(
-      `| ${r.priority} | ${r.apiPath.split('/').pop()} | ${statusIcon} ${r.status} | ${r.filename} |`
+      `| ${r.priority} | ${stars} | ${r.apiPath.split('/').pop()} | ${statusIcon} ${r.status} | ${r.filename} |`
     );
   });
 
   const successCount = results.filter((r) => r.success).length;
-  console.log(`\n成功: ${successCount}/${results.length}`);
+  console.log(`\n新生成: ${successCount}/${results.length}`);
+  console.log(
+    `总文档数: ${existingDocs.length + successCount}/${prioritizedRequests.length}`
+  );
 
   if (successCount < results.length) {
     console.log('\n⚠️  部分 API 请求失败，可能原因:');
     console.log('  - Cookie 已过期');
     console.log('  - share_id 或 meeting_id 无效');
     console.log('  - 网络问题');
+    console.log('  - API 需要额外参数');
   }
 
   console.log(`\n📁 文档保存位置: ${CONFIG.outputDir}`);
+  console.log('\n💡 提示: 下次运行会自动跳过已生成的文档');
 }
 
 // 运行
