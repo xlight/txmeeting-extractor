@@ -29,19 +29,21 @@ function generateMarkdown(data: MeetingData): string {
   sections.push('## 会议信息\n');
   sections.push(`- **会议 ID**: ${data.metadata.meeting_id}`);
   sections.push(`- **录制 ID**: ${data.metadata.recording_id}`);
-  
+
   if (data.metadata.duration) {
     sections.push(`- **时长**: ${formatDuration(data.metadata.duration)}`);
   }
-  
+
   if (data.metadata.start_time) {
-    sections.push(`- **开始时间**: ${formatTimestamp(data.metadata.start_time)}`);
+    sections.push(
+      `- **开始时间**: ${formatTimestamp(data.metadata.start_time)}`
+    );
   }
-  
+
   if (data.metadata.end_time) {
     sections.push(`- **结束时间**: ${formatTimestamp(data.metadata.end_time)}`);
   }
-  
+
   sections.push('');
 
   // 智能总结
@@ -64,7 +66,9 @@ function generateMarkdown(data: MeetingData): string {
     data.action_items.forEach((item) => {
       const checkbox = item.status === 'completed' ? '[x]' : '[ ]';
       const assignee = item.assignee ? ` (@${item.assignee})` : '';
-      sections.push(`- ${checkbox} ${escapeMarkdown(item.description)}${assignee}`);
+      sections.push(
+        `- ${checkbox} ${escapeMarkdown(item.description)}${assignee}`
+      );
     });
     sections.push('');
   }
@@ -93,16 +97,6 @@ function generateMarkdown(data: MeetingData): string {
     });
   }
 
-  // 段落
-  if (data.paragraphs && data.paragraphs.length > 0) {
-    sections.push('## 📄 段落\n');
-    data.paragraphs.forEach((para, index) => {
-      sections.push(`### 段落 ${index + 1}\n`);
-      sections.push(escapeMarkdown(para));
-      sections.push('');
-    });
-  }
-
   // 聊天记录
   if (data.chat_messages && data.chat_messages.length > 0) {
     sections.push('## 💬 聊天记录\n');
@@ -123,15 +117,6 @@ function generateMarkdown(data: MeetingData): string {
       if (h.content) {
         sections.push(`  > ${escapeMarkdown(h.content)}`);
       }
-    });
-    sections.push('');
-  }
-
-  // 屏幕分享
-  if (data.screen_sharing && data.screen_sharing.length > 0) {
-    sections.push('## 🖥️ 屏幕分享\n');
-    data.screen_sharing.forEach((item) => {
-      sections.push(`- ${escapeMarkdown(item)}`);
     });
     sections.push('');
   }

@@ -1,6 +1,7 @@
 /**
  * 数据提取和转换工具
- * 从腾讯会议API响应中提取结构化数据
+ * 从腾讯会议 API 响应中提取结构化数据
+ * 基于真实 API 响应结构重构
  */
 
 import {
@@ -8,58 +9,131 @@ import {
   MeetingMetadata,
   TranscriptSegment,
   Participant,
-  ChatMessage,
   ActionItem,
-  Highlight,
+  Chapter,
+  MinutesDetailResponse,
+  CommonRecordInfoResponse,
+  TranscriptParagraph,
+  isMinutesDetailResponse,
+  isCommonRecordInfoResponse,
+  parseNumber,
+  parseTimestamp,
+  decodeBase64,
+  isValidArray,
+  RecordingInfo,
 } from '../types/meeting';
 
 /**
- * 从API响应中提取会议数据
+ * 从 minutes/detail API 响应中提取数据
  */
-export function extractMeetingData(apiResponse: unknown): MeetingData | null {
+export function extractFromMinutesDetail(
+  response: MinutesDetailResponse
+): Partial<MeetingData> {
+  if (!isMinutesDetailResponse(response) || !response.minutes) {
+    console.warn('[Extractor] 无效的 minutes/detail API 响应');
+    return {};
+  }
+
+  const { minutes } = response;
+
+  return {
+    // 转写内容：将 3 层嵌套结构（paragraphs → sentences → words）转换为扁平化的段落列表
+    transcript: convertParagraphsToSegments(minutes.paragraphs || []),
+
+    // 关键词
+    keywords: minutes.keywords?.map((k) => k.keyword).filter(Boolean),
+
+    // 章节
+    chapters: minutes.chapters
+      ?.map(convertChapter)
+      .filter(Boolean) as Chapter[],
+
+    // AI 智能总结
+    summary: minutes.summary,
+
+    // 行动项
+    action_items: minutes.action_items
+      ?.map(convertActionItem)
+      .filter(Boolean) as ActionItem[],
+  };
+}
+
+/**
+ * 从 common-record-info API 响应中提取数据
+ */
+export function extractFromCommonRecordInfo(
+  response: CommonRecordInfoResponse
+): Partial<MeetingData> {
+  if (!isCommonRecordInfoResponse(response) || !response.data) {
+    console.warn('[Extractor] 无效的 common-record-info API 响应');
+    return {};
+  }
+
+  const { data } = response;
+  const meetingInfo = data.meeting_info;
+  const recording = data.recordings?.[0]; // 取第一个录制记录
+
+  // 构建元数据
+  const metadata: MeetingMetadata | undefined = meetingInfo
+    ? {
+        meeting_id: meetingInfo.meeting_id || '',
+        recording_id: recording?.id || '',
+        title: decodeBase64(meetingInfo.subject || ''), // 解码 Base64
+        start_time: parseTimestamp(meetingInfo.start_time),
+        end_time: parseTimestamp(meetingInfo.end_time),
+        duration: parseNumber(recording?.duration), // 毫秒
+        share_id: data.share_id,
+        meeting_code: meetingInfo.meeting_code,
+        pk_meeting_info_id: data.pk_meeting_info_id,
+      }
+    : undefined;
+
+  return {
+    metadata,
+    participants: data.meeting_members
+      ?.map(convertMeetingMember)
+      .filter(Boolean) as Participant[],
+    recording_info: recording,
+  };
+}
+
+/**
+ * 主提取函数：合并多个 API 响应的数据
+ */
+export function extractMeetingData(apiResponses: {
+  minutesDetail?: MinutesDetailResponse;
+  commonRecordInfo?: CommonRecordInfoResponse;
+}): MeetingData | null {
   try {
-    // 验证响应格式
-    if (!apiResponse || typeof apiResponse !== 'object') {
-      console.warn('[Extractor] 无效的API响应格式');
-      return null;
-    }
+    const minutesData = apiResponses.minutesDetail
+      ? extractFromMinutesDetail(apiResponses.minutesDetail)
+      : {};
 
-    const response = apiResponse as Record<string, unknown>;
+    const recordData = apiResponses.commonRecordInfo
+      ? extractFromCommonRecordInfo(apiResponses.commonRecordInfo)
+      : {};
 
-    // 检查响应码
-    if (response.code !== 0 && response.code !== undefined) {
-      console.warn('[Extractor] API返回错误码:', response.code);
-    }
-
-    const data = response.data as Record<string, unknown>;
-    if (!data) {
-      console.warn('[Extractor] API响应中没有data字段');
-      return null;
-    }
-
-    // 提取元数据
-    const metadata = extractMetadata(data);
-    if (!metadata) {
-      console.warn('[Extractor] 无法提取会议元数据');
-      return null;
-    }
-
-    // 提取各类数据
-    const meetingData: MeetingData = {
-      metadata,
-      summary: extractSummary(data),
-      minutes: extractMinutes(data),
-      transcript: extractTranscript(data),
-      paragraphs: extractParagraphs(data),
-      participants: extractParticipants(data),
-      chat_messages: extractChatMessages(data),
-      action_items: extractActionItems(data),
-      highlights: extractHighlights(data),
-      screen_sharing: extractScreenSharing(data),
+    // 合并数据，recordData 的 metadata 优先
+    const mergedData: MeetingData = {
+      metadata:
+        recordData.metadata || minutesData.metadata || createEmptyMetadata(),
+      summary: minutesData.summary,
+      transcript: minutesData.transcript || [],
+      participants: recordData.participants,
+      action_items: minutesData.action_items,
+      keywords: minutesData.keywords,
+      chapters: minutesData.chapters,
+      recording_info: recordData.recording_info,
       captured_at: Date.now(),
     };
 
-    return meetingData;
+    // 验证必要字段
+    if (!mergedData.metadata.meeting_id && !mergedData.metadata.recording_id) {
+      console.warn('[Extractor] 无法提取有效的会议标识');
+      return null;
+    }
+
+    return mergedData;
   } catch (error) {
     console.error('[Extractor] 提取会议数据失败:', error);
     return null;
@@ -67,232 +141,141 @@ export function extractMeetingData(apiResponse: unknown): MeetingData | null {
 }
 
 /**
- * 提取会议元数据
+ * 将段落结构转换为扁平化的转写片段
+ * 段落 → 句子 → 词语 => 转写片段（以段落为单位）
  */
-function extractMetadata(data: Record<string, unknown>): MeetingMetadata | null {
-  try {
-    const meetingId = String(data.meeting_id || data.meetingId || '');
-    const recordingId = String(data.recording_id || data.recordingId || data.id || '');
-    const title = String(data.title || data.name || '未命名会议');
+function convertParagraphsToSegments(
+  paragraphs: TranscriptParagraph[]
+): TranscriptSegment[] {
+  if (!isValidArray(paragraphs)) {
+    return [];
+  }
 
-    if (!meetingId || !recordingId) {
+  const segments: TranscriptSegment[] = [];
+
+  for (const para of paragraphs) {
+    try {
+      // 将所有句子的所有词语拼接成段落文本
+      const text =
+        para.sentences
+          ?.flatMap(
+            (sentence) => sentence.words?.map((word) => word.text) || []
+          )
+          .join('') || '';
+
+      if (!text.trim()) {
+        continue;
+      }
+
+      segments.push({
+        pid: para.pid,
+        start_time: para.start_time,
+        end_time: para.end_time,
+        text: sanitizeText(text),
+        speaker: para.speaker?.user_name,
+        speaker_id: para.speaker?.user_id,
+        avatar_url: para.speaker?.avatar_url,
+      });
+    } catch (error) {
+      console.error('[Extractor] 转换段落失败:', error, para);
+    }
+  }
+
+  return segments;
+}
+
+/**
+ * 转换章节数据
+ */
+function convertChapter(chapter: {
+  chapter_id: string;
+  title: string;
+  start_time: number;
+  end_time: number;
+  summary?: string;
+}): Chapter | null {
+  try {
+    if (!chapter.chapter_id || !chapter.title) {
       return null;
     }
 
     return {
-      meeting_id: meetingId,
-      recording_id: recordingId,
-      title: sanitizeText(title),
-      start_time: extractNumber(data.start_time || data.startTime),
-      end_time: extractNumber(data.end_time || data.endTime),
-      duration: extractNumber(data.duration),
-      share_id: data.share_id as string,
-      short_url_code: data.short_url_code as string,
+      id: chapter.chapter_id,
+      title: sanitizeText(chapter.title),
+      start_time: chapter.start_time,
+      end_time: chapter.end_time,
+      summary: chapter.summary ? sanitizeText(chapter.summary) : undefined,
     };
   } catch (error) {
-    console.error('[Extractor] 提取元数据失败:', error);
+    console.error('[Extractor] 转换章节失败:', error, chapter);
     return null;
   }
 }
 
 /**
- * 提取智能总结
+ * 转换行动项数据
  */
-function extractSummary(data: Record<string, unknown>): string | undefined {
-  const summary = data.summary || data.ai_summary || data.smart_summary;
-  return summary ? sanitizeText(String(summary)) : undefined;
-}
-
-/**
- * 提取会议纪要
- */
-function extractMinutes(data: Record<string, unknown>): string | undefined {
-  const minutes = data.minutes || data.meeting_minutes;
-  return minutes ? sanitizeText(String(minutes)) : undefined;
-}
-
-/**
- * 提取转写内容
- */
-function extractTranscript(data: Record<string, unknown>): TranscriptSegment[] {
+function convertActionItem(item: {
+  id: string;
+  content: string;
+  assignee?: string;
+}): ActionItem | null {
   try {
-    const transcriptList =
-      (data.transcript_list as unknown[]) ||
-      (data.transcripts as unknown[]) ||
-      (data.transcript as unknown[]) ||
-      [];
-
-    const segments: TranscriptSegment[] = [];
-
-    for (const item of transcriptList) {
-      if (!item || typeof item !== 'object') continue;
-      const seg = item as Record<string, unknown>;
-
-      segments.push({
-        pid: String(seg.pid || seg.id || Math.random().toString(36)),
-        start_time: extractNumber(seg.start_time || seg.startTime) || 0,
-        end_time: extractNumber(seg.end_time || seg.endTime) || 0,
-        text: sanitizeText(String(seg.text || seg.content || '')),
-        speaker: seg.speaker ? sanitizeText(String(seg.speaker)) : undefined,
-        speaker_id: seg.speaker_id as string | undefined,
-      });
+    if (!item.content) {
+      return null;
     }
 
-    return segments;
+    return {
+      id: item.id,
+      description: sanitizeText(item.content),
+      assignee: item.assignee ? sanitizeText(item.assignee) : undefined,
+    };
   } catch (error) {
-    console.error('[Extractor] 提取转写失败:', error);
-    return [];
+    console.error('[Extractor] 转换行动项失败:', error, item);
+    return null;
   }
 }
 
 /**
- * 提取段落
+ * 转换会议成员数据
  */
-function extractParagraphs(data: Record<string, unknown>): string[] | undefined {
+function convertMeetingMember(member: {
+  app_uid?: string;
+  avatar_url?: string;
+  user_name: string;
+}): Participant | null {
   try {
-    const paragraphs = data.paragraphs || data.paragraph_list;
-    if (Array.isArray(paragraphs)) {
-      return paragraphs
-        .map((p) => (typeof p === 'string' ? sanitizeText(p) : String(p)))
-        .filter((p) => p.length > 0);
+    if (!member.user_name) {
+      return null;
     }
+
+    return {
+      user_id: member.app_uid,
+      user_name: sanitizeText(member.user_name),
+      avatar_url: member.avatar_url,
+    };
   } catch (error) {
-    console.error('[Extractor] 提取段落失败:', error);
+    console.error('[Extractor] 转换会议成员失败:', error, member);
+    return null;
   }
-  return undefined;
 }
 
 /**
- * 提取参会人员
+ * 创建空的元数据对象
  */
-function extractParticipants(data: Record<string, unknown>): Participant[] | undefined {
-  try {
-    const participantList = data.participants || data.participant_list;
-    if (Array.isArray(participantList)) {
-      return participantList.map((p: unknown) => {
-        const participant = p as Record<string, unknown>;
-        return {
-          user_id: String(participant.user_id || participant.userId || ''),
-          user_name: sanitizeText(
-            String(participant.user_name || participant.userName || participant.name || '')
-          ),
-          join_time: extractNumber(participant.join_time || participant.joinTime),
-          leave_time: extractNumber(participant.leave_time || participant.leaveTime),
-        };
-      });
-    }
-  } catch (error) {
-    console.error('[Extractor] 提取参会人员失败:', error);
-  }
-  return undefined;
+function createEmptyMetadata(): MeetingMetadata {
+  return {
+    meeting_id: '',
+    recording_id: '',
+    title: '未命名会议',
+  };
 }
 
 /**
- * 提取聊天消息
- */
-function extractChatMessages(data: Record<string, unknown>): ChatMessage[] | undefined {
-  try {
-    const chatList = data.chat_messages || data.chats || data.messages;
-    if (Array.isArray(chatList)) {
-      return chatList.map((msg: unknown, index: number) => {
-        const message = msg as Record<string, unknown>;
-        return {
-          message_id: String(message.message_id || message.id || index),
-          sender_id: String(message.sender_id || message.senderId || ''),
-          sender_name: sanitizeText(
-            String(message.sender_name || message.senderName || message.sender || '')
-          ),
-          content: sanitizeText(String(message.content || message.text || '')),
-          timestamp: extractNumber(message.timestamp || message.time) || 0,
-        };
-      });
-    }
-  } catch (error) {
-    console.error('[Extractor] 提取聊天消息失败:', error);
-  }
-  return undefined;
-}
-
-/**
- * 提取行动项
- */
-function extractActionItems(data: Record<string, unknown>): ActionItem[] | undefined {
-  try {
-    const actionList = data.action_items || data.actions || data.todos;
-    if (Array.isArray(actionList)) {
-      return actionList.map((item: unknown, index: number) => {
-        const action = item as Record<string, unknown>;
-        return {
-          id: String(action.id || index),
-          description: sanitizeText(String(action.description || action.text || '')),
-          assignee: action.assignee ? sanitizeText(String(action.assignee)) : undefined,
-          due_date: action.due_date as string,
-          status: (action.status as 'pending' | 'completed') || 'pending',
-        };
-      });
-    }
-  } catch (error) {
-    console.error('[Extractor] 提取行动项失败:', error);
-  }
-  return undefined;
-}
-
-/**
- * 提取重点时刻
- */
-function extractHighlights(data: Record<string, unknown>): Highlight[] | undefined {
-  try {
-    const highlightList = data.highlights || data.key_moments;
-    if (Array.isArray(highlightList)) {
-      return highlightList.map((item: unknown, index: number) => {
-        const highlight = item as Record<string, unknown>;
-        return {
-          id: String(highlight.id || index),
-          timestamp: extractNumber(highlight.timestamp || highlight.time) || 0,
-          description: sanitizeText(String(highlight.description || highlight.text || '')),
-          content: highlight.content ? sanitizeText(String(highlight.content)) : undefined,
-        };
-      });
-    }
-  } catch (error) {
-    console.error('[Extractor] 提取重点时刻失败:', error);
-  }
-  return undefined;
-}
-
-/**
- * 提取屏幕分享内容
- */
-function extractScreenSharing(data: Record<string, unknown>): string[] | undefined {
-  try {
-    const screenSharing = data.screen_sharing || data.shared_screens;
-    if (Array.isArray(screenSharing)) {
-      return screenSharing
-        .map((item) => sanitizeText(String(item)))
-        .filter((item) => item.length > 0);
-    }
-  } catch (error) {
-    console.error('[Extractor] 提取屏幕分享失败:', error);
-  }
-  return undefined;
-}
-
-/**
- * 辅助函数：提取数字
- */
-function extractNumber(value: unknown): number | undefined {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const num = parseFloat(value);
-    return isNaN(num) ? undefined : num;
-  }
-  return undefined;
-}
-
-/**
- * 辅助函数：清理和转义文本（XSS防护）
+ * 辅助函数：清理和转义文本（XSS 防护）
  */
 export function sanitizeText(text: string): string {
+  if (!text) return '';
   return text
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -318,9 +301,10 @@ export function formatTimestamp(timestamp: number): string {
 }
 
 /**
- * 格式化时长（秒）为可读格式
+ * 格式化时长（毫秒）为可读格式
  */
-export function formatDuration(seconds: number): string {
+export function formatDuration(milliseconds: number): string {
+  const seconds = Math.floor(milliseconds / 1000);
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
@@ -332,4 +316,31 @@ export function formatDuration(seconds: number): string {
   } else {
     return `${secs}秒`;
   }
+}
+
+/**
+ * 验证会议数据的完整性
+ */
+export function validateMeetingData(data: MeetingData): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  if (!data.metadata?.meeting_id && !data.metadata?.recording_id) {
+    errors.push('缺少会议 ID 或录制 ID');
+  }
+
+  if (!data.transcript || data.transcript.length === 0) {
+    errors.push('没有转写数据');
+  }
+
+  if (!data.metadata?.title || data.metadata.title === '未命名会议') {
+    errors.push('缺少会议标题');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
 }
