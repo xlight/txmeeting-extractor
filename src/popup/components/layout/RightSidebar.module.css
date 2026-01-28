@@ -1,0 +1,154 @@
+.rightSidebar {
+  width: 280px;
+  background-color: #fafafa;
+  border-left: 1px solid var(--color-border-secondary);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-slow);
+}
+
+.sidebarCollapsed {
+  width: 40px;
+  background-color: #fafafa;
+  border-left: 1px solid var(--color-border-secondary);
+  display: flex;
+  align-items: flex-start;
+  padding-top: var(--spacing-md);
+  justify-content: center;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.sidebarTitle {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.collapseButton,
+.expandButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.collapseButton:hover,
+.expandButton:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.panelsContainer {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 手风琴面板区域 */
+.panelSection {
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.panelSection:last-child {
+  border-bottom: none;
+}
+
+.panelToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: none;
+  background-color: var(--color-bg-container);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: left;
+}
+
+.panelToggle:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.panelToggle.active {
+  background-color: var(--color-bg-secondary);
+}
+
+.panelIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.panelLabel {
+  flex: 1;
+}
+
+.toggleIcon {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.panelContent {
+  max-height: 400px;
+  overflow: hidden;
+  background-color: var(--color-bg-container);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 400px;
+    opacity: 1;
+  }
+}
+
+.placeholder {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.placeholder p {
+  margin-bottom: var(--spacing-sm);
+}
+
+/* 滚动条样式 */
+.panelsContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panelsContainer::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.panelsContainer::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.panelsContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}

@@ -66,7 +66,11 @@ XMLHttpRequest.prototype.send = function (
     return originalSend.call(this, body);
   }
 
-  if (url && url.includes('/wemeet-cloudrecording-webapi/')) {
+  if (
+    url &&
+    (url.includes('/wemeet-cloudrecording-webapi/') ||
+      url.includes('/wemeet-tapi/'))
+  ) {
     console.log(`[TXMeeting Injected] ✅ 匹配到腾讯会议 API: ${url}`);
 
     this.addEventListener('load', function (this: XMLHttpRequest) {
@@ -128,7 +132,10 @@ window.fetch = async function (...args) {
 
   const response = await originalFetch.apply(this, args);
 
-  if (url.includes('/wemeet-cloudrecording-webapi/')) {
+  if (
+    url.includes('/wemeet-cloudrecording-webapi/') ||
+    url.includes('/wemeet-tapi/')
+  ) {
     console.log(`[TXMeeting Injected] ✅ 匹配到 fetch API: ${url}`);
 
     const clonedResponse = response.clone();

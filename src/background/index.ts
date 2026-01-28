@@ -11,6 +11,14 @@ import {
   STORAGE_KEYS,
   MinutesDetailResponse,
   CommonRecordInfoResponse,
+  // 新增 API 响应类型
+  GetFullSummaryResponse,
+  GetChapterResponse,
+  GetTimeLineResponse,
+  GetMulSummaryAndTodoResponse,
+  GetSmartTopicResponse,
+  GetCriticalNodeResponse,
+  GetMultiRecordFileResponse,
 } from '../types/meeting';
 import { extractMeetingData } from '../utils/extractor';
 
@@ -22,12 +30,29 @@ const TENCENT_MEETING_API_PATTERNS = [
   'https://meeting.tencent.com/wemeet-cloudrecording-webapi/v1/participants*',
 ];
 
+// 全局会议上下文：跟踪当前正在查看的会议
+let currentMeetingContext: {
+  meetingId?: string;
+  recordingId?: string;
+  cacheKey?: string;
+  lastActivityTime: number;
+} = {
+  lastActivityTime: Date.now(),
+};
+
 // 临时缓存：存储同一会议的多个API响应
 const apiResponseCache: Map<
   string,
   {
     minutesDetail?: MinutesDetailResponse;
     commonRecordInfo?: CommonRecordInfoResponse;
+    fullSummary?: GetFullSummaryResponse;
+    chapter?: GetChapterResponse;
+    timeLine?: GetTimeLineResponse;
+    mulSummaryAndTodo?: GetMulSummaryAndTodoResponse;
+    smartTopic?: GetSmartTopicResponse;
+    criticalNode?: GetCriticalNodeResponse;
+    multiRecordFile?: GetMultiRecordFileResponse;
     timestamp: number;
   }
 > = new Map();
@@ -117,14 +142,89 @@ async function handleAPIResponse(payload: {
 
     console.log('[TXMeeting Background] 📋 识别到 API 类型:', apiType);
 
-    // 提取会议标识（从URL参数中）
-    const meetingKey = extractMeetingKeyFromURL(payload.url);
+    // 尝试从URL提取会议标识
+    const urlMeetingIds = extractMeetingIdsFromURL(payload.url);
+
+    // 尝试从响应体中提取会议标识（某些API的ID在响应体中）
+    const bodyMeetingIds = extractMeetingIdsFromResponseBody(
+      apiType,
+      payload.data
+    );
+
+    // 合并URL和响应体中的会议标识
+    const extractedIds = {
+      meetingId: urlMeetingIds.meetingId || bodyMeetingIds.meetingId,
+      recordingId: urlMeetingIds.recordingId || bodyMeetingIds.recordingId,
+    };
+
+    // 更新全局会议上下文（如果有新信息）
+    if (extractedIds.meetingId || extractedIds.recordingId) {
+      const now = Date.now();
+      // 如果超过5分钟没有活动，或者检测到新的会议ID，重置上下文
+      const isNewSession =
+        now - currentMeetingContext.lastActivityTime > 5 * 60 * 1000 ||
+        (extractedIds.meetingId &&
+          currentMeetingContext.meetingId &&
+          extractedIds.meetingId !== currentMeetingContext.meetingId);
+
+      if (isNewSession) {
+        console.log('[TXMeeting Background] 🔄 检测到新会议会话');
+        currentMeetingContext = {
+          meetingId: extractedIds.meetingId,
+          recordingId: extractedIds.recordingId,
+          lastActivityTime: now,
+        };
+      } else {
+        // 补充上下文中缺失的信息
+        if (extractedIds.meetingId && !currentMeetingContext.meetingId) {
+          currentMeetingContext.meetingId = extractedIds.meetingId;
+          console.log(
+            '[TXMeeting Background] 📝 从响应体补充 meeting_id:',
+            extractedIds.meetingId
+          );
+        }
+        if (extractedIds.recordingId && !currentMeetingContext.recordingId) {
+          currentMeetingContext.recordingId = extractedIds.recordingId;
+          console.log(
+            '[TXMeeting Background] 📝 从响应体补充 recording_id:',
+            extractedIds.recordingId
+          );
+        }
+        currentMeetingContext.lastActivityTime = now;
+      }
+    }
+
+    // 构建缓存键（优先使用组合键）
+    let meetingKey: string | undefined;
+    if (currentMeetingContext.meetingId && currentMeetingContext.recordingId) {
+      meetingKey = `${currentMeetingContext.meetingId}_${currentMeetingContext.recordingId}`;
+    } else if (currentMeetingContext.recordingId) {
+      meetingKey = currentMeetingContext.recordingId;
+    } else if (currentMeetingContext.meetingId) {
+      meetingKey = currentMeetingContext.meetingId;
+    }
+
     if (!meetingKey) {
-      console.warn('[TXMeeting Background] ⚠️ 无法从URL提取会议标识');
+      console.warn(
+        '[TXMeeting Background] ⚠️ 无法确定会议标识，暂存API响应等待后续匹配'
+      );
+      console.warn('[TXMeeting Background] 当前上下文:', currentMeetingContext);
+      console.warn('[TXMeeting Background] URL参数:', urlMeetingIds);
+      console.warn('[TXMeeting Background] 响应体参数:', bodyMeetingIds);
+      // 暂存这个响应，等待其他API提供会议标识
+      // TODO: 实现暂存机制
       return;
     }
 
-    console.log('[TXMeeting Background] 🔑 会议标识:', meetingKey);
+    // 保存缓存键到上下文
+    currentMeetingContext.cacheKey = meetingKey;
+
+    console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
+    console.log('[TXMeeting Background] 📌 当前上下文:', {
+      meetingId: currentMeetingContext.meetingId,
+      recordingId: currentMeetingContext.recordingId,
+      cacheKey: currentMeetingContext.cacheKey,
+    });
 
     // 获取或创建临时缓存
     let cache = apiResponseCache.get(meetingKey);
@@ -193,6 +293,31 @@ async function handleAPIResponse(payload: {
     } else if (apiType === 'common-record-info') {
       cache.commonRecordInfo = payload.data as CommonRecordInfoResponse;
       console.log('[TXMeeting Background] ✅ 已存储 common-record-info 响应');
+    } else if (apiType === 'get-full-summary') {
+      cache.fullSummary = payload.data as GetFullSummaryResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 get-full-summary 响应');
+    } else if (apiType === 'get-chapter') {
+      cache.chapter = payload.data as GetChapterResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 get-chapter 响应');
+    } else if (apiType === 'get-time-line') {
+      cache.timeLine = payload.data as GetTimeLineResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 get-time-line 响应');
+    } else if (apiType === 'get-mul-summary-and-todo') {
+      cache.mulSummaryAndTodo = payload.data as GetMulSummaryAndTodoResponse;
+      console.log(
+        '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应'
+      );
+    } else if (apiType === 'get-smart-topic') {
+      cache.smartTopic = payload.data as GetSmartTopicResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 get-smart-topic 响应');
+    } else if (apiType === 'get-critical-node') {
+      cache.criticalNode = payload.data as GetCriticalNodeResponse;
+      console.log('[TXMeeting Background] ✅ 已存储 get-critical-node 响应');
+    } else if (apiType === 'get-multi-record-file') {
+      cache.multiRecordFile = payload.data as GetMultiRecordFileResponse;
+      console.log(
+        '[TXMeeting Background] ✅ 已存储 get-multi-record-file 响应'
+      );
     }
 
     cache.timestamp = Date.now();
@@ -201,94 +326,111 @@ async function handleAPIResponse(payload: {
     console.log('[TXMeeting Background] 📊 缓存状态:', {
       hasMinutesDetail: !!cache.minutesDetail,
       hasCommonRecordInfo: !!cache.commonRecordInfo,
+      hasFullSummary: !!cache.fullSummary,
+      hasChapter: !!cache.chapter,
+      hasTimeLine: !!cache.timeLine,
+      hasMulSummaryAndTodo: !!cache.mulSummaryAndTodo,
+      hasSmartTopic: !!cache.smartTopic,
+      hasCriticalNode: !!cache.criticalNode,
+      hasMultiRecordFile: !!cache.multiRecordFile,
       minutesDetailHasMore: cache.minutesDetail?.more,
     });
 
-    // 检查是否所有数据都已加载完成
+    // 检查是否应该提取数据（有足够的基础数据）
     const isMinutesDetailComplete =
       cache.minutesDetail && !cache.minutesDetail.more;
-    const shouldExtractData = isMinutesDetailComplete || cache.commonRecordInfo;
+    const hasBasicData = isMinutesDetailComplete || cache.commonRecordInfo;
 
-    if (!shouldExtractData) {
-      console.log('[TXMeeting Background] ⏳ 等待更多分页数据...');
+    if (!hasBasicData) {
+      console.log(
+        '[TXMeeting Background] ⏳ 等待基础数据（转写或录制信息）...'
+      );
       return;
     }
 
-    // 尝试提取数据
-    if (cache.minutesDetail || cache.commonRecordInfo) {
-      console.log('[TXMeeting Background] 🔄 开始提取完整会议数据...');
+    // 提取并保存数据
+    console.log('[TXMeeting Background] 🔄 开始提取完整会议数据...');
 
-      const meetingData = extractMeetingData({
-        minutesDetail: cache.minutesDetail,
-        commonRecordInfo: cache.commonRecordInfo,
+    const meetingData = extractMeetingData({
+      minutesDetail: cache.minutesDetail,
+      commonRecordInfo: cache.commonRecordInfo,
+      fullSummary: cache.fullSummary,
+      chapter: cache.chapter,
+      timeLine: cache.timeLine,
+      mulSummaryAndTodo: cache.mulSummaryAndTodo,
+      smartTopic: cache.smartTopic,
+      criticalNode: cache.criticalNode,
+      multiRecordFile: cache.multiRecordFile,
+    });
+
+    if (!meetingData) {
+      console.warn('[TXMeeting Background] ⚠️ 无法提取会议数据');
+      console.warn('[TXMeeting Background] 调试信息:', {
+        minutesDetailCode: (cache.minutesDetail as any)?.code,
+        commonRecordInfoCode: (cache.commonRecordInfo as any)?.code,
+        minutesDetailHasMinutes: !!(cache.minutesDetail as any)?.minutes,
+        commonRecordInfoHasData: !!(cache.commonRecordInfo as any)?.data,
       });
-
-      if (!meetingData) {
-        console.warn('[TXMeeting Background] ⚠️ 无法提取会议数据');
-        console.warn('[TXMeeting Background] 调试信息:', {
-          minutesDetailCode: (cache.minutesDetail as any)?.code,
-          commonRecordInfoCode: (cache.commonRecordInfo as any)?.code,
-          minutesDetailHasMinutes: !!(cache.minutesDetail as any)?.minutes,
-          commonRecordInfoHasData: !!(cache.commonRecordInfo as any)?.data,
-        });
-        return;
-      }
-
-      // 从 URL 中提取会议 ID 信息（补充 metadata）
-      const ids = extractMeetingIdsFromURL(payload.url);
-      if (ids.meetingId && !meetingData.metadata.meeting_id) {
-        meetingData.metadata.meeting_id = ids.meetingId;
-      }
-      if (ids.recordingId && !meetingData.metadata.recording_id) {
-        meetingData.metadata.recording_id = ids.recordingId;
-      }
-
-      console.log(
-        '[TXMeeting Background] ✅ 会议数据提取成功:',
-        meetingData.metadata
-      );
-
-      // 生成缓存键
-      const cacheKey = `${meetingData.metadata.meeting_id}_${meetingData.metadata.recording_id}`;
-
-      // 读取现有缓存
-      const result = await chrome.storage.local.get(STORAGE_KEYS.MEETINGS);
-      const cachedMeetings =
-        (result[STORAGE_KEYS.MEETINGS] as Record<
-          string,
-          {
-            data: MeetingData;
-            timestamp: number;
-          }
-        >) || {};
-
-      // 更新缓存
-      cachedMeetings[cacheKey] = {
-        data: meetingData,
-        timestamp: Date.now(),
-      };
-
-      // 保存到storage
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.MEETINGS]: cachedMeetings,
-        [STORAGE_KEYS.CURRENT_MEETING_ID]: cacheKey,
-      });
-
-      console.log('[TXMeeting Background] 数据已缓存:', cacheKey);
-
-      // 通知popup更新（如果打开）
-      chrome.runtime
-        .sendMessage({
-          type: MessageType.MEETING_DATA_UPDATED,
-          payload: meetingData,
-        })
-        .catch(() => {
-          // Popup未打开时会失败，忽略错误
-        });
-
-      // 清理已使用的临时缓存
-      apiResponseCache.delete(meetingKey);
+      return;
     }
+
+    // 从全局上下文补充会议标识
+    if (currentMeetingContext.meetingId && !meetingData.metadata.meeting_id) {
+      meetingData.metadata.meeting_id = currentMeetingContext.meetingId;
+    }
+    if (
+      currentMeetingContext.recordingId &&
+      !meetingData.metadata.recording_id
+    ) {
+      meetingData.metadata.recording_id = currentMeetingContext.recordingId;
+    }
+
+    console.log(
+      '[TXMeeting Background] ✅ 会议数据提取成功:',
+      meetingData.metadata
+    );
+
+    // 使用全局上下文的缓存键（更可靠）
+    const cacheKey = meetingKey;
+
+    // 读取现有缓存
+    const result = await chrome.storage.local.get(STORAGE_KEYS.MEETINGS);
+    const cachedMeetings =
+      (result[STORAGE_KEYS.MEETINGS] as Record<
+        string,
+        {
+          data: MeetingData;
+          timestamp: number;
+        }
+      >) || {};
+
+    // 更新缓存
+    cachedMeetings[cacheKey] = {
+      data: meetingData,
+      timestamp: Date.now(),
+    };
+
+    // 保存到storage
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.MEETINGS]: cachedMeetings,
+      [STORAGE_KEYS.CURRENT_MEETING_ID]: cacheKey,
+    });
+
+    console.log('[TXMeeting Background] 💾 数据已保存到storage:', cacheKey);
+
+    // 通知popup更新（如果打开）
+    chrome.runtime
+      .sendMessage({
+        type: MessageType.MEETING_DATA_UPDATED,
+        payload: meetingData,
+      })
+      .catch(() => {
+        // Popup未打开时会失败，忽略错误
+      });
+
+    // 🔥 重要：不要删除内存缓存！保留它以便后续API可以追加数据
+    // apiResponseCache.delete(meetingKey);  // ← 注释掉这一行
+    console.log('[TXMeeting Background] 📌 保留内存缓存，等待更多API数据...');
   } catch (error) {
     console.error('[TXMeeting Background] 处理API响应失败:', error);
   }
@@ -299,11 +441,35 @@ async function handleAPIResponse(payload: {
  */
 function identifyAPIType(
   url: string
-): 'minutes/detail' | 'common-record-info' | null {
+):
+  | 'minutes/detail'
+  | 'common-record-info'
+  | 'get-full-summary'
+  | 'get-chapter'
+  | 'get-time-line'
+  | 'get-mul-summary-and-todo'
+  | 'get-smart-topic'
+  | 'get-critical-node'
+  | 'get-multi-record-file'
+  | null {
   if (url.includes('/minutes/detail')) {
     return 'minutes/detail';
   } else if (url.includes('/common-record-info')) {
     return 'common-record-info';
+  } else if (url.includes('/get-full-summary')) {
+    return 'get-full-summary';
+  } else if (url.includes('/get-chapter')) {
+    return 'get-chapter';
+  } else if (url.includes('/get-time-line')) {
+    return 'get-time-line';
+  } else if (url.includes('/get-mul-summary-and-todo')) {
+    return 'get-mul-summary-and-todo';
+  } else if (url.includes('/get-smart-topic')) {
+    return 'get-smart-topic';
+  } else if (url.includes('/get-critical-node')) {
+    return 'get-critical-node';
+  } else if (url.includes('/get-multi-record-file')) {
+    return 'get-multi-record-file';
   }
   return null;
 }
@@ -314,13 +480,16 @@ function identifyAPIType(
 function extractMeetingKeyFromURL(url: string): string | null {
   try {
     const urlObj = new URL(url);
+    // 尝试多种参数名称
     const recordingId =
       urlObj.searchParams.get('recording_id') ||
-      urlObj.searchParams.get('recordingId');
+      urlObj.searchParams.get('recordingId') ||
+      urlObj.searchParams.get('record_id'); // 新增 record_id
     const meetingId =
       urlObj.searchParams.get('meeting_id') ||
       urlObj.searchParams.get('meetingId');
 
+    // 优先使用 recording_id，其次使用 meeting_id
     if (recordingId) {
       return recordingId;
     } else if (meetingId) {
@@ -349,9 +518,62 @@ function extractMeetingIdsFromURL(url: string): {
       recordingId:
         urlObj.searchParams.get('recording_id') ||
         urlObj.searchParams.get('recordingId') ||
+        urlObj.searchParams.get('record_id') || // 支持 record_id
         undefined,
     };
   } catch {
+    return {};
+  }
+}
+
+/**
+ * 从API响应体中提取会议标识
+ * 某些API（如 common-record-info）的会议ID在响应体中而不在URL参数中
+ */
+function extractMeetingIdsFromResponseBody(
+  apiType: string,
+  data: unknown
+): {
+  meetingId?: string;
+  recordingId?: string;
+} {
+  try {
+    // common-record-info: meeting_id 在响应体的 meeting_info 中
+    if (apiType === 'common-record-info') {
+      const response = data as CommonRecordInfoResponse;
+      const meetingId = response.data?.meeting_info?.meeting_id;
+      const recordingId = response.data?.recordings?.[0]?.id;
+
+      if (meetingId || recordingId) {
+        console.log(
+          '[TXMeeting Background] 📝 从 common-record-info 响应体提取:',
+          {
+            meetingId,
+            recordingId,
+          }
+        );
+      }
+
+      return {
+        meetingId,
+        recordingId,
+      };
+    }
+
+    // minutes/detail: 通常ID在URL中，但响应体可能也包含（作为备用）
+    if (apiType === 'minutes/detail') {
+      const response = data as MinutesDetailResponse;
+      // 如果响应体中有会议信息，可以提取
+      // 根据实际API响应结构调整
+      return {};
+    }
+
+    // 其他API类型可以在这里扩展
+    // get-chapter, get-full-summary 等通常依赖URL参数
+
+    return {};
+  } catch (error) {
+    console.error('[TXMeeting Background] 从响应体提取ID失败:', error);
     return {};
   }
 }

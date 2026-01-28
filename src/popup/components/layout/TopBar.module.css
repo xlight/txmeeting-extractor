@@ -1,0 +1,163 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 var(--spacing-md);
+  background-color: var(--color-bg-base);
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 600;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.logoIcon {
+  font-size: 20px;
+}
+
+.logoText {
+  white-space: nowrap;
+}
+
+/* 视图标签 */
+.viewTabs {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.viewTab {
+  height: 32px;
+  padding: 0 var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.viewTab:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.viewTab.active {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* 搜索框 */
+.searchContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  transition: width var(--transition-slow);
+}
+
+.searchContainer:not(.expanded) {
+  width: 32px;
+}
+
+.searchContainer.expanded {
+  width: 300px;
+}
+
+.searchButton {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-base);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.searchButton:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-primary);
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 32px 0 var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-bg);
+}
+
+.searchClear {
+  position: absolute;
+  right: var(--spacing-xs);
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.searchClear:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* 导出按钮 */
+.exportButton {
+  height: 32px;
+  padding: 0 var(--spacing-md);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.exportButton:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.exportButton:active {
+  background-color: var(--color-primary-active);
+  border-color: var(--color-primary-active);
+}

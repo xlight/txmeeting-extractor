@@ -1,12 +1,21 @@
+/**
+ * 全局样式
+ */
+
+@import './styles/variables.css';
+
 body {
   margin: 0;
   padding: 0;
 }
 
 .app {
-  width: 600px;
-  max-height: 800px;
-  background: #fff;
+  width: 100%;
+  min-height: 600px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-base);
 }
 
 .header {

@@ -1,0 +1,5 @@
+.mainLayout {
+  display: flex;
+  height: calc(100vh - 56px); /* 减去 TopBar 高度 */
+  overflow: hidden;
+}

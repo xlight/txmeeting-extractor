@@ -1,0 +1,6 @@
+.contentArea {
+  flex: 1;
+  background-color: var(--color-bg-base);
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}

@@ -1,0 +1,164 @@
+/**
+ * MinutesView 组件样式
+ */
+
+.minutesView {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.copyButton {
+  padding: 8px 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-weight: 500;
+}
+
+.copyButton:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.copyButton:active {
+  transform: translateY(0);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+  background-color: var(--color-bg-container);
+  border-radius: var(--radius-md);
+  line-height: 1.8;
+  border: 1px solid var(--color-border-secondary);
+}
+
+/* Markdown 元素样式 */
+.h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: var(--spacing-lg) 0 var(--spacing-md);
+  color: var(--color-text-primary);
+  border-bottom: 2px solid var(--color-border-secondary);
+  padding-bottom: var(--spacing-sm);
+}
+
+.h1:first-child {
+  margin-top: 0;
+}
+
+.h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+  color: var(--color-text-primary);
+}
+
+.h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: var(--spacing-sm) 0;
+  color: var(--color-text-primary);
+}
+
+.p {
+  margin: var(--spacing-sm) 0;
+  color: var(--color-text-primary);
+}
+
+.ul,
+.ol {
+  margin: var(--spacing-sm) 0;
+  padding-left: var(--spacing-lg);
+}
+
+.li {
+  margin: 4px 0;
+  color: var(--color-text-primary);
+}
+
+.strong {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.em {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+/* 加载/空状态样式 */
+.loadingState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.loadingState p,
+.emptyState p {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-base);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border-secondary);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 滚动条样式优化 */
+.content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
