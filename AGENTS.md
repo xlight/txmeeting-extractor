@@ -2,9 +2,10 @@
 # OpenSpec Instructions
 
 ## 使用中文
- - 大模型输出使用中文
+ - 大模型Thinking和输出使用中文
  - 文档使用中文
  - 注释使用中文
+
 These instructions are for AI assistants working in this project.
 
 Always open `@/openspec/AGENTS.md` when the request:
