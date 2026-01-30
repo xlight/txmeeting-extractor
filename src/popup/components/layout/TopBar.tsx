@@ -91,7 +91,7 @@ export function TopBar() {
     { key: 'overview', label: '概览' },
     { key: 'transcript', label: '转写' },
     { key: 'chapters', label: '章节' },
-    { key: 'minutes', label: '纪要' },
+    { key: 'summary', label: '纪要' },
   ];
 
   return (

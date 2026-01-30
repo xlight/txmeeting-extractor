@@ -253,7 +253,7 @@ export function extractMeetingData(apiResponses: {
       critical_nodes: nodeData.critical_nodes,
       recording_files: fileData.recording_files,
 
-      // 新增：三种摘要类型和待办事项
+      // 新增：三种纪要类型和待办事项
       topic_summary_data: todoData.topic_summary_data,
       chapter_summary_data: todoData.chapter_summary_data,
       speaker_summary_data: todoData.speaker_summary_data,
@@ -495,7 +495,7 @@ export function validateMeetingData(data: MeetingData): {
 // ==================== 新增 API 提取函数 ====================
 
 /**
- * 从 get-full-summary API 响应中提取完整摘要
+ * 从 get-full-summary API 响应中提取完整纪要
  */
 export function extractFromFullSummary(
   response: GetFullSummaryResponse
@@ -552,7 +552,7 @@ export function extractFromTimeLine(
 
 /**
  * 从 get-mul-summary-and-todo API 的多个响应中提取数据
- * @param responses - 包含三种摘要类型响应的对象
+ * @param responses - 包含三种纪要类型响应的对象
  */
 export function extractFromMulSummaryAndTodo(responses: {
   topicSummary?: GetMulSummaryAndTodoResponse;
@@ -568,10 +568,10 @@ export function extractFromMulSummaryAndTodo(responses: {
 
   const result: Partial<MeetingData> = {};
 
-  // 提取主题摘要数据 (summary_type=8)
+  // 提取主题纪要数据 (summary_type=8)
   if (responses.topicSummary?.data?.topic_summary) {
     const topicData = responses.topicSummary.data.topic_summary;
-    console.log('[Extractor] 🔍 原始主题摘要数据:', {
+    console.log('[Extractor] 🔍 原始主题纪要数据:', {
       hasBeginSummary: !!topicData.begin_summary,
       beginSummaryLength: topicData.begin_summary?.length || 0,
       subPointsIsArray: Array.isArray(topicData.sub_points),
@@ -590,24 +590,24 @@ export function extractFromMulSummaryAndTodo(responses: {
       lang: topicData.lang || '',
       model_status: topicData.model_status || 0,
     };
-    console.log('[Extractor] ✅ 提取主题摘要数据:', {
+    console.log('[Extractor] ✅ 提取主题纪要数据:', {
       beginLength: result.topic_summary_data.begin_summary.length,
       pointsCount: result.topic_summary_data.sub_points.length,
       endLength: result.topic_summary_data.end_summary.length,
       status: result.topic_summary_data.summary_status,
     });
   } else {
-    console.log('[Extractor] ⚠️ 未找到主题摘要数据', {
+    console.log('[Extractor] ⚠️ 未找到主题纪要数据', {
       hasResponse: !!responses.topicSummary,
       hasData: !!responses.topicSummary?.data,
       hasTopicSummary: !!responses.topicSummary?.data?.topic_summary,
     });
   }
 
-  // 提取分章节摘要数据 (summary_type=1)
+  // 提取分章节纪要数据 (summary_type=1)
   if (responses.chapterSummary?.data?.chapter_summary) {
     const chapterData = responses.chapterSummary.data.chapter_summary;
-    console.log('[Extractor] 🔍 原始分章节摘要数据:', {
+    console.log('[Extractor] 🔍 原始分章节纪要数据:', {
       summaryListIsArray: Array.isArray(chapterData.summary_list),
       summaryListCount: chapterData.summary_list?.length || 0,
       summaryStatus: chapterData.summary_status,
@@ -626,12 +626,12 @@ export function extractFromMulSummaryAndTodo(responses: {
       lang: chapterData.lang || '',
       model_status: chapterData.model_status || 0,
     };
-    console.log('[Extractor] ✅ 提取分章节摘要数据:', {
+    console.log('[Extractor] ✅ 提取分章节纪要数据:', {
       chaptersCount: result.chapter_summary_data.summary_list.length,
       status: result.chapter_summary_data.summary_status,
     });
   } else {
-    console.log('[Extractor] ⚠️ 未找到分章节摘要数据');
+    console.log('[Extractor] ⚠️ 未找到分章节纪要数据');
   }
 
   // 提取发言人观点数据 (summary_type=4)

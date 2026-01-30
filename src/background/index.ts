@@ -344,12 +344,12 @@ async function handleAPIResponse(payload: {
       if (summaryType === 8) {
         cache.mulSummaryAndTodo.topicSummary = response;
         console.log(
-          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (主题摘要, summary_type=8)'
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (主题纪要, summary_type=8)'
         );
       } else if (summaryType === 1) {
         cache.mulSummaryAndTodo.chapterSummary = response;
         console.log(
-          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (分章节摘要, summary_type=1)'
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (分章节纪要, summary_type=1)'
         );
       } else if (summaryType === 4) {
         cache.mulSummaryAndTodo.speakerSummary = response;

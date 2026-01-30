@@ -1,5 +1,5 @@
 /**
- * TopicSummaryCard 组件 - 主题摘要卡片
+ * TopicSummaryCard 组件 - 主题纪要卡片
  */
 
 import React, { useCallback, useMemo } from 'react';
@@ -30,11 +30,11 @@ export const TopicSummaryCard = React.memo<TopicSummaryCardProps>(
     return (
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>💡 主题摘要</h2>
+          <h2 className={styles.cardTitle}>💡 主题纪要</h2>
           <button
             className={styles.copyButton}
             onClick={handleCopy}
-            aria-label="复制主题摘要"
+            aria-label="复制主题纪要"
           >
             📋 复制
           </button>

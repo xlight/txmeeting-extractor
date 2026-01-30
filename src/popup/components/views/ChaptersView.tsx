@@ -138,7 +138,7 @@ export function ChaptersView() {
 
               {chapter.summary && (
                 <div className={styles.chapterSummary}>
-                  <div className={styles.summaryLabel}>📝 章节摘要:</div>
+                  <div className={styles.summaryLabel}>📝 章节纪要:</div>
                   <p>{chapter.summary}</p>
                 </div>
               )}

@@ -48,8 +48,12 @@ export function OverviewView() {
     participants,
     chapters,
     todo_list,
+    todo_items,
     critical_nodes,
     smart_topics,
+    topic_summary_data,
+    chapter_summary_data,
+    speaker_summary_data,
   } = meetingData;
 
   // 计算统计数据
@@ -57,9 +61,14 @@ export function OverviewView() {
     transcript?.reduce((sum, item) => sum + item.text.length, 0) || 0;
   const participantsCount = participants?.length || 0;
   const chaptersCount = chapters?.length || 0;
-  const todoCount = todo_list?.length || 0;
+  const todoCount = (todo_items?.length || 0) + (todo_list?.length || 0);
   const criticalNodesCount = critical_nodes?.length || 0;
   const topicsCount = smart_topics?.length || 0;
+
+  // 检查新纪要数据是否可用
+  const hasTopicSummary = topic_summary_data?.summary_status === 2;
+  const hasChapterSummary = chapter_summary_data?.summary_status === 2;
+  const hasSpeakerSummary = speaker_summary_data?.summary_status === 2;
 
   return (
     <div className={styles.overviewView}>
@@ -87,27 +96,13 @@ export function OverviewView() {
               {metadata.duration ? formatDuration(metadata.duration) : '-'}
             </span>
           </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>会议标题:</span>
-            <span className={styles.infoValue}>
-              {metadata.title || '未知会议'}
-            </span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>开始时间:</span>
-            <span className={styles.infoValue}>
-              {metadata.start_time
-                ? formatDateTime(new Date(metadata.start_time).toISOString())
-                : '-'}
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* AI 摘要 */}
+      {/* AI 纪要 */}
       {summary && (
         <div className={styles.card}>
-          <h2 className={styles.cardTitle}>✨ AI 摘要</h2>
+          <h2 className={styles.cardTitle}>✨ AI 纪要</h2>
           <p className={styles.summaryText}>{summary}</p>
         </div>
       )}
@@ -145,6 +140,44 @@ export function OverviewView() {
           <div className={styles.statItem}>
             <div className={styles.statValue}>{transcript?.length || 0}</div>
             <div className={styles.statLabel}>转写段落</div>
+          </div>
+        </div>
+      </div>
+
+      {/* AI 纪要状态 */}
+      <div className={styles.card}>
+        <h2 className={styles.cardTitle}>🤖 AI 纪要状态</h2>
+        <div className={styles.summaryStatus}>
+          <div className={styles.statusItem}>
+            <span className={styles.statusIcon}>
+              {hasTopicSummary ? '✅' : '⏳'}
+            </span>
+            <span className={styles.statusLabel}>主题纪要</span>
+            <span className={styles.statusValue}>
+              {hasTopicSummary ? '已生成' : '待生成'}
+            </span>
+          </div>
+          <div className={styles.statusItem}>
+            <span className={styles.statusIcon}>
+              {hasChapterSummary ? '✅' : '⏳'}
+            </span>
+            <span className={styles.statusLabel}>分章节纪要</span>
+            <span className={styles.statusValue}>
+              {hasChapterSummary
+                ? `${chapter_summary_data?.summary_list?.length || 0} 章`
+                : '待生成'}
+            </span>
+          </div>
+          <div className={styles.statusItem}>
+            <span className={styles.statusIcon}>
+              {hasSpeakerSummary ? '✅' : '⏳'}
+            </span>
+            <span className={styles.statusLabel}>发言人观点</span>
+            <span className={styles.statusValue}>
+              {hasSpeakerSummary
+                ? `${speaker_summary_data?.speakers_opinions?.length || 0} 人`
+                : '待生成'}
+            </span>
           </div>
         </div>
       </div>

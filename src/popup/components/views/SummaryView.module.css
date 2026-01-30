@@ -1,8 +1,8 @@
 /**
- * MinutesView 组件样式
+ * SummaryView 组件样式
  */
 
-.minutesView {
+.summaryView {
   height: 100%;
   display: flex;
   flex-direction: column;

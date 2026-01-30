@@ -1,5 +1,5 @@
 /**
- * ChapterSummaryCard 组件 - 分章节摘要卡片
+ * ChapterSummaryCard 组件 - 分章节纪要卡片
  */
 
 import React, { useCallback, useMemo } from 'react';
@@ -31,11 +31,11 @@ export const ChapterSummaryCard = React.memo<ChapterSummaryCardProps>(
     return (
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>📑 分章节摘要</h2>
+          <h2 className={styles.cardTitle}>📑 分章节纪要</h2>
           <button
             className={styles.copyButton}
             onClick={handleCopy}
-            aria-label="复制分章节摘要"
+            aria-label="复制分章节纪要"
           >
             📋 复制
           </button>
@@ -65,14 +65,14 @@ export const ChapterSummaryCard = React.memo<ChapterSummaryCardProps>(
                       </div>
                     )}
 
-                  {/* 章节摘要 */}
+                  {/* 章节纪要 */}
                   <p className={styles.chapterSummary}>{chapter.summary}</p>
                 </div>
               ))}
             </div>
           ) : (
             <div className={styles.emptyState} role="status">
-              暂无章节摘要
+              暂无章节纪要
             </div>
           )}
         </div>

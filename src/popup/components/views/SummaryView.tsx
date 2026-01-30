@@ -1,6 +1,6 @@
 /**
- * MinutesView 组件 - 会议纪要视图
- * 重构后使用新的摘要卡片组件
+ * SummaryView 组件 - 会议摘要视图
+ * 展示主题摘要、分章节摘要、发言人观点和待办事项
  */
 
 import React, { useCallback, useMemo } from 'react';
@@ -14,9 +14,9 @@ import {
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
 import { generateCompleteMinutesMarkdown } from '../../utils/markdown';
-import styles from './MinutesView.module.css';
+import styles from './SummaryView.module.css';
 
-export function MinutesView() {
+export function SummaryView() {
   const { meetingData, isLoading } = useMeetingData();
   const { toast, showToast } = useToast();
 
@@ -40,7 +40,7 @@ export function MinutesView() {
   const hasAnyData =
     hasTopicSummary || hasChapterSummary || hasSpeakerSummary || hasTodos;
 
-  // 生成完整的 Markdown 纪要
+  // 生成完整的 Markdown 摘要
   const completeMarkdown = useMemo(() => {
     if (!meetingData) return '';
     return generateCompleteMinutesMarkdown(
@@ -61,13 +61,13 @@ export function MinutesView() {
     todo_items,
   ]);
 
-  // 复制全部纪要
+  // 复制全部摘要
   const handleCopyAll = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(completeMarkdown);
-      showToast('已复制完整纪要到剪贴板');
+      showToast('已复制完整摘要到剪贴板');
     } catch (error) {
-      console.error('[MinutesView] 复制失败:', error);
+      console.error('[SummaryView] 复制失败:', error);
       showToast('复制失败，请重试');
     }
   }, [completeMarkdown, showToast]);
@@ -104,7 +104,7 @@ export function MinutesView() {
   if (!hasAnyData) {
     return (
       <div className={styles.emptyState}>
-        <p>暂无会议纪要数据</p>
+        <p>暂无会议摘要数据</p>
         <p className={styles.emptyHint}>
           会议摘要可能正在生成中，请稍后刷新页面重试
         </p>
@@ -113,16 +113,16 @@ export function MinutesView() {
   }
 
   return (
-    <div className={styles.minutesView}>
+    <div className={styles.summaryView}>
       {/* 头部 */}
       <div className={styles.header}>
-        <h2 className={styles.title}>会议纪要</h2>
+        <h2 className={styles.title}>会议摘要</h2>
         <button
           className={styles.copyAllButton}
           onClick={handleCopyAll}
-          aria-label="复制完整纪要"
+          aria-label="复制完整摘要"
         >
-          📋 复制全部纪要
+          📋 复制全部摘要
         </button>
       </div>
 

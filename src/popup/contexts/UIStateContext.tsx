@@ -19,12 +19,6 @@ interface UIStateContextValue extends UIState {
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: number[]) => void;
 
-  // 侧边栏
-  toggleLeftSidebar: () => void;
-  toggleRightSidebar: () => void;
-  setLeftSidebarCollapsed: (collapsed: boolean) => void;
-  setRightSidebarCollapsed: (collapsed: boolean) => void;
-
   // 时间/章节导航
   setCurrentTime: (time: number) => void;
   setCurrentChapter: (id: string | number | null) => void;
@@ -50,8 +44,6 @@ export function UIStateProvider({ children }: { children: React.ReactNode }) {
           currentView: parsed.currentView || 'overview',
           searchQuery: '',
           searchResults: [],
-          leftSidebarCollapsed: parsed.leftSidebarCollapsed || false,
-          rightSidebarCollapsed: parsed.rightSidebarCollapsed || false,
           currentTime: 0,
           currentChapterId: null,
           highlightedTranscriptIndex: null,
@@ -65,8 +57,6 @@ export function UIStateProvider({ children }: { children: React.ReactNode }) {
       currentView: 'overview',
       searchQuery: '',
       searchResults: [],
-      leftSidebarCollapsed: false,
-      rightSidebarCollapsed: false,
       currentTime: 0,
       currentChapterId: null,
       highlightedTranscriptIndex: null,
@@ -80,18 +70,12 @@ export function UIStateProvider({ children }: { children: React.ReactNode }) {
         STORAGE_KEY,
         JSON.stringify({
           currentView: state.currentView,
-          leftSidebarCollapsed: state.leftSidebarCollapsed,
-          rightSidebarCollapsed: state.rightSidebarCollapsed,
         })
       );
     } catch (err) {
       console.error('保存 UI 状态失败:', err);
     }
-  }, [
-    state.currentView,
-    state.leftSidebarCollapsed,
-    state.rightSidebarCollapsed,
-  ]);
+  }, [state.currentView]);
 
   const setCurrentView = useCallback((view: ViewMode) => {
     setState((prev) => ({ ...prev, currentView: view }));
@@ -103,28 +87,6 @@ export function UIStateProvider({ children }: { children: React.ReactNode }) {
 
   const setSearchResults = useCallback((results: number[]) => {
     setState((prev) => ({ ...prev, searchResults: results }));
-  }, []);
-
-  const toggleLeftSidebar = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      leftSidebarCollapsed: !prev.leftSidebarCollapsed,
-    }));
-  }, []);
-
-  const toggleRightSidebar = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      rightSidebarCollapsed: !prev.rightSidebarCollapsed,
-    }));
-  }, []);
-
-  const setLeftSidebarCollapsed = useCallback((collapsed: boolean) => {
-    setState((prev) => ({ ...prev, leftSidebarCollapsed: collapsed }));
-  }, []);
-
-  const setRightSidebarCollapsed = useCallback((collapsed: boolean) => {
-    setState((prev) => ({ ...prev, rightSidebarCollapsed: collapsed }));
   }, []);
 
   const setCurrentTime = useCallback((time: number) => {
@@ -151,10 +113,6 @@ export function UIStateProvider({ children }: { children: React.ReactNode }) {
     setCurrentView,
     setSearchQuery,
     setSearchResults,
-    toggleLeftSidebar,
-    toggleRightSidebar,
-    setLeftSidebarCollapsed,
-    setRightSidebarCollapsed,
     setCurrentTime,
     setCurrentChapter,
     setHighlightedTranscriptIndex,

@@ -165,13 +165,13 @@ export interface MeetingMetadata {
 // ==================== 新增 API 数据类型 ====================
 
 /**
- * 完整摘要（来自 get-full-summary API）
+ * 完整纪要（来自 get-full-summary API）
  */
 export interface FullSummary {
-  full_summary: string; // 完整摘要文本
-  summary_deal_status: number; // 摘要处理状态
+  full_summary: string; // 完整纪要文本
+  summary_deal_status: number; // 纪要处理状态
   lang: string; // 语言
-  origin_full_summary?: string; // 原始摘要
+  origin_full_summary?: string; // 原始纪要
   is_audio_detect_complete?: boolean; // 音频检测是否完成
   model_status?: number; // 模型状态
 }
@@ -184,7 +184,7 @@ export interface ChapterDetail {
   title: string; // 章节标题
   start_time: number; // 开始时间（毫秒）
   end_time: number; // 结束时间（毫秒）
-  summary: string; // 章节摘要
+  summary: string; // 章节纪要
   chapter_type: number; // 章节类型
   origin_title?: string; // 原始标题
   lang?: string; // 语言
@@ -203,7 +203,7 @@ export interface TimelineEvent {
 }
 
 /**
- * 主题摘要数据 (summary_type=8)
+ * 主题纪要数据 (summary_type=8)
  * 来自 get-mul-summary-and-todo API
  */
 export interface TopicSummaryData {
@@ -220,15 +220,15 @@ export interface TopicSummaryData {
 }
 
 /**
- * 分章节摘要数据 (summary_type=1)
+ * 分章节纪要数据 (summary_type=1)
  * 来自 get-mul-summary-and-todo API
  */
 export interface ChapterSummaryData {
   summary_list: Array<{
-    // 章节摘要列表
+    // 章节纪要列表
     chapter_id: string; // 章节 ID
     chapter_title: string; // 章节标题
-    summary: string; // 章节摘要
+    summary: string; // 章节纪要
     start_time?: number; // 开始时间(毫秒)
     end_time?: number; // 结束时间(毫秒)
   }>;
@@ -254,8 +254,8 @@ export interface SpeakerSummaryData {
       }>;
     }>;
   }>;
-  custom_summary: string; // 自定义摘要(HTML格式)
-  orig_custom_summary: string; // 原始自定义摘要(HTML格式)
+  custom_summary: string; // 自定义纪要(HTML格式)
+  orig_custom_summary: string; // 原始自定义纪要(HTML格式)
   summary_status: number;
   lang: string;
   model_status: number;
@@ -352,7 +352,7 @@ export interface MeetingData {
   recording_info?: RecordingInfo; // 录制详细信息
 
   // 新增字段（来自新 API）
-  full_summary?: FullSummary; // 完整摘要（详细、超详细版本）
+  full_summary?: FullSummary; // 完整纪要（详细、超详细版本）
   chapter_details?: ChapterDetail[]; // 章节详情（增强版）
   timeline?: TimelineEvent[]; // 时间轴事件
   todo_list?: TodoItem[]; // 待办事项列表
@@ -361,8 +361,8 @@ export interface MeetingData {
   recording_files?: RecordingFile[]; // 录制文件列表
 
   // 新增字段（来自 get-mul-summary-and-todo API）
-  topic_summary_data?: TopicSummaryData; // 主题摘要
-  chapter_summary_data?: ChapterSummaryData; // 分章节摘要
+  topic_summary_data?: TopicSummaryData; // 主题纪要
+  chapter_summary_data?: ChapterSummaryData; // 分章节纪要
   speaker_summary_data?: SpeakerSummaryData; // 发言人观点
   todo_items?: TodoItemData[]; // 待办事项（新格式）
 
@@ -405,7 +405,7 @@ export interface MinutesDetailResponse {
       end_time: number;
       summary?: string;
     }>;
-    summary?: string; // AI 摘要
+    summary?: string; // AI 纪要
     action_items?: Array<{
       id: string;
       content: string;
@@ -505,7 +505,7 @@ export interface GetMulSummaryAndTodoResponse {
   msg?: string;
   data?: {
     is_audio_detect_complete?: boolean;
-    // 分章节摘要 (summary_type=1)
+    // 分章节纪要 (summary_type=1)
     chapter_summary?: {
       summary_list?: Array<{
         chapter_id: string;
@@ -518,7 +518,7 @@ export interface GetMulSummaryAndTodoResponse {
       lang?: string;
       model_status?: number;
     };
-    // 主题摘要 (summary_type=8)
+    // 主题纪要 (summary_type=8)
     topic_summary?: {
       begin_summary?: string;
       sub_points?: Array<{

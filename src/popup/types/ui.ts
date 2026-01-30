@@ -5,7 +5,7 @@
 /**
  * 视图模式
  */
-export type ViewMode = 'overview' | 'transcript' | 'chapters' | 'minutes';
+export type ViewMode = 'overview' | 'transcript' | 'chapters' | 'summary';
 
 /**
  * UI 状态接口
@@ -17,10 +17,6 @@ export interface UIState {
   // 搜索状态
   searchQuery: string;
   searchResults: number[]; // 转写项索引数组
-
-  // 侧边栏状态
-  leftSidebarCollapsed: boolean;
-  rightSidebarCollapsed: boolean;
 
   // 交互状态
   currentTime: number; // 当前查看的时间点 (ms)

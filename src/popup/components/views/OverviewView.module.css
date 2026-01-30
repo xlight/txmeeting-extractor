@@ -42,7 +42,7 @@
   font-weight: 500;
 }
 
-/* 摘要 */
+/* 纪要 */
 .summaryText {
   font-size: var(--font-size-base);
   color: var(--color-text-primary);
@@ -189,4 +189,42 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   font-style: italic;
+}
+
+/* AI 纪要状态 */
+.summaryStatus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-layout);
+  transition: all 0.2s ease;
+}
+
+.statusItem:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.statusIcon {
+  font-size: var(--font-size-xl);
+}
+
+.statusLabel {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.statusValue {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
 }

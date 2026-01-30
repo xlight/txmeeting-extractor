@@ -1,6 +1,6 @@
 /**
  * Markdown 生成工具函数
- * 将摘要数据转换为 Markdown 格式用于复制
+ * 将纪要数据转换为 Markdown 格式用于复制
  */
 
 import {
@@ -12,10 +12,10 @@ import {
 import { formatTime } from './format';
 
 /**
- * 将主题摘要转换为 Markdown 格式
+ * 将主题纪要转换为 Markdown 格式
  */
 export function topicSummaryToMarkdown(data: TopicSummaryData): string {
-  const lines: string[] = ['# 💡 主题摘要\n'];
+  const lines: string[] = ['# 💡 主题纪要\n'];
 
   // 开场总结
   if (data.begin_summary) {
@@ -42,10 +42,10 @@ export function topicSummaryToMarkdown(data: TopicSummaryData): string {
 }
 
 /**
- * 将分章节摘要转换为 Markdown 格式
+ * 将分章节纪要转换为 Markdown 格式
  */
 export function chapterSummaryToMarkdown(data: ChapterSummaryData): string {
-  const lines: string[] = ['# 📑 分章节摘要\n'];
+  const lines: string[] = ['# 📑 分章节纪要\n'];
 
   if (data.summary_list && data.summary_list.length > 0) {
     data.summary_list.forEach((chapter, index) => {
@@ -58,11 +58,11 @@ export function chapterSummaryToMarkdown(data: ChapterSummaryData): string {
         lines.push(`**时间**: ${startTime} - ${endTime}\n`);
       }
 
-      // 章节摘要
+      // 章节纪要
       lines.push(chapter.summary + '\n');
     });
   } else {
-    lines.push('暂无章节摘要\n');
+    lines.push('暂无章节纪要\n');
   }
 
   return lines.join('\n');
@@ -145,12 +145,12 @@ export function generateCompleteMinutesMarkdown(
 ): string {
   const sections: string[] = [];
 
-  // 主题摘要
+  // 主题纪要
   if (topicData && topicData.summary_status === 2) {
     sections.push(topicSummaryToMarkdown(topicData));
   }
 
-  // 分章节摘要
+  // 分章节纪要
   if (chapterData && chapterData.summary_status === 2) {
     sections.push(chapterSummaryToMarkdown(chapterData));
   }

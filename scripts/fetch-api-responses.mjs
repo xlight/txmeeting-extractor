@@ -40,7 +40,7 @@ const API_PRIORITY = {
     dataValue: 5,
     order: 1,
     filename: 'minutes-detail.md',
-    purpose: '获取会议纪要详情（转写、摘要、行动项）',
+    purpose: '获取会议纪要详情（转写、纪要、行动项）',
   },
   '/wemeet-tapi/v2/meetlog/public/detail/common-record-info': {
     priority: '🔴 Critical',
@@ -54,7 +54,7 @@ const API_PRIORITY = {
     dataValue: 4,
     order: 3,
     filename: 'get-full-summary.md',
-    purpose: '获取完整 AI 摘要（简要、详细、超详细版本）',
+    purpose: '获取完整 AI 纪要（简要、详细、超详细版本）',
   },
   '/wemeet-tapi/v2/meetlog/public/record-detail/get-chapter': {
     priority: '🔴 Critical',
@@ -84,7 +84,7 @@ const API_PRIORITY = {
     dataValue: 4,
     order: 7,
     filename: 'get-mul-summary-and-todo.md',
-    purpose: '获取多语言摘要和待办事项列表',
+    purpose: '获取多语言纪要和待办事项列表',
   },
   '/wemeet-tapi/v2/meetlog/public/record-detail/get-critical-node': {
     priority: '🟡 Important',

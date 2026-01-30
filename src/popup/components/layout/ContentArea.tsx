@@ -7,7 +7,7 @@ import { useUIState } from '../../contexts/UIStateContext';
 import { OverviewView } from '../views/OverviewView';
 import { TranscriptView } from '../views/TranscriptView';
 import { ChaptersView } from '../views/ChaptersView';
-import { MinutesView } from '../views/MinutesView';
+import { SummaryView } from '../views/SummaryView';
 import styles from './ContentArea.module.css';
 
 export function ContentArea() {
@@ -21,8 +21,8 @@ export function ContentArea() {
         return <TranscriptView />;
       case 'chapters':
         return <ChaptersView />;
-      case 'minutes':
-        return <MinutesView />;
+      case 'summary':
+        return <SummaryView />;
       default:
         return <OverviewView />;
     }
