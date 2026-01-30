@@ -190,20 +190,6 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
     });
   }
 
-  // 关键时刻
-  if (meetingData.critical_nodes && meetingData.critical_nodes.length > 0) {
-    minutes += `## 关键时刻\n\n`;
-    meetingData.critical_nodes.forEach((node) => {
-      minutes += `### ${node.title}\n\n`;
-      if (node.description) {
-        minutes += `${node.description}\n\n`;
-      }
-      if (node.node_time !== undefined) {
-        minutes += `*时间点: ${formatTime(node.node_time)}*\n\n`;
-      }
-    });
-  }
-
   // 章节内容
   if (meetingData.chapters && meetingData.chapters.length > 0) {
     minutes += `## 会议章节\n\n`;

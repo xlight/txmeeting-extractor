@@ -309,19 +309,6 @@ export interface SmartTopic {
 }
 
 /**
- * 关键节点/决策点（来自 get-critical-node API）
- */
-export interface CriticalNode {
-  node_id: string; // 节点 ID
-  node_time: number; // 节点时间（毫秒）
-  node_type: number; // 节点类型：1=决策，2=结论，3=问题
-  title: string; // 节点标题
-  description: string; // 节点描述
-  participants?: string[]; // 相关参与者
-  importance?: number; // 重要性评分
-}
-
-/**
  * 录制文件（来自 get-multi-record-file API）
  */
 export interface RecordingFile {
@@ -357,7 +344,6 @@ export interface MeetingData {
   timeline?: TimelineEvent[]; // 时间轴事件
   todo_list?: TodoItem[]; // 待办事项列表
   smart_topics?: SmartTopic[]; // 智能话题
-  critical_nodes?: CriticalNode[]; // 关键节点/决策点
   recording_files?: RecordingFile[]; // 录制文件列表
 
   // 新增字段（来自 get-mul-summary-and-todo API）
@@ -602,29 +588,6 @@ export interface GetSmartTopicResponse {
       }>;
       orig_name?: string;
     }>;
-  };
-  nonce?: string;
-  timestamp?: number;
-}
-
-/**
- * get-critical-node API 响应
- */
-export interface GetCriticalNodeResponse {
-  code: number;
-  err_detail?: string;
-  msg?: string;
-  data?: {
-    node_list?: Array<{
-      node_id: string;
-      node_time: number;
-      node_type: number;
-      title: string;
-      description: string;
-      participants?: string[];
-      importance?: number;
-    }>;
-    node_status?: number;
   };
   nonce?: string;
   timestamp?: number;
@@ -877,22 +840,6 @@ export function isGetSmartTopicResponse(
   value: unknown
 ): value is GetSmartTopicResponse {
   const response = value as GetSmartTopicResponse;
-  return (
-    typeof response === 'object' &&
-    response !== null &&
-    typeof response.code === 'number' &&
-    response.code === 0 &&
-    response.data !== undefined
-  );
-}
-
-/**
- * 类型守卫：检查是否为有效的 GetCriticalNodeResponse
- */
-export function isGetCriticalNodeResponse(
-  value: unknown
-): value is GetCriticalNodeResponse {
-  const response = value as GetCriticalNodeResponse;
   return (
     typeof response === 'object' &&
     response !== null &&

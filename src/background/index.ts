@@ -17,7 +17,6 @@ import {
   GetTimeLineResponse,
   GetMulSummaryAndTodoResponse,
   GetSmartTopicResponse,
-  GetCriticalNodeResponse,
   GetMultiRecordFileResponse,
 } from '../types/meeting';
 import { extractMeetingData } from '../utils/extractor';
@@ -56,7 +55,6 @@ const apiResponseCache: Map<
       speakerSummary?: GetMulSummaryAndTodoResponse; // summary_type=4
     };
     smartTopic?: GetSmartTopicResponse;
-    criticalNode?: GetCriticalNodeResponse;
     multiRecordFile?: GetMultiRecordFileResponse;
     timestamp: number;
   }
@@ -367,9 +365,6 @@ async function handleAPIResponse(payload: {
     } else if (apiType === 'get-smart-topic') {
       cache.smartTopic = payload.data as GetSmartTopicResponse;
       console.log('[TXMeeting Background] ✅ 已存储 get-smart-topic 响应');
-    } else if (apiType === 'get-critical-node') {
-      cache.criticalNode = payload.data as GetCriticalNodeResponse;
-      console.log('[TXMeeting Background] ✅ 已存储 get-critical-node 响应');
     } else if (apiType === 'get-multi-record-file') {
       cache.multiRecordFile = payload.data as GetMultiRecordFileResponse;
       console.log(
@@ -390,7 +385,6 @@ async function handleAPIResponse(payload: {
       hasChapterSummary: !!cache.mulSummaryAndTodo?.chapterSummary,
       hasSpeakerSummary: !!cache.mulSummaryAndTodo?.speakerSummary,
       hasSmartTopic: !!cache.smartTopic,
-      hasCriticalNode: !!cache.criticalNode,
       hasMultiRecordFile: !!cache.multiRecordFile,
       minutesDetailHasMore: cache.minutesDetail?.more,
     });
@@ -418,7 +412,6 @@ async function handleAPIResponse(payload: {
       timeLine: cache.timeLine,
       mulSummaryAndTodo: cache.mulSummaryAndTodo,
       smartTopic: cache.smartTopic,
-      criticalNode: cache.criticalNode,
       multiRecordFile: cache.multiRecordFile,
     });
 
@@ -508,7 +501,6 @@ function identifyAPIType(
   | 'get-time-line'
   | 'get-mul-summary-and-todo'
   | 'get-smart-topic'
-  | 'get-critical-node'
   | 'get-multi-record-file'
   | null {
   if (url.includes('/minutes/detail')) {
@@ -525,8 +517,6 @@ function identifyAPIType(
     return 'get-mul-summary-and-todo';
   } else if (url.includes('/get-smart-topic')) {
     return 'get-smart-topic';
-  } else if (url.includes('/get-critical-node')) {
-    return 'get-critical-node';
   } else if (url.includes('/get-multi-record-file')) {
     return 'get-multi-record-file';
   }

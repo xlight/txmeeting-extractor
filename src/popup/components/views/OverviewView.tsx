@@ -49,7 +49,6 @@ export function OverviewView() {
     chapters,
     todo_list,
     todo_items,
-    critical_nodes,
     smart_topics,
     topic_summary_data,
     chapter_summary_data,
@@ -62,7 +61,6 @@ export function OverviewView() {
   const participantsCount = participants?.length || 0;
   const chaptersCount = chapters?.length || 0;
   const todoCount = (todo_items?.length || 0) + (todo_list?.length || 0);
-  const criticalNodesCount = critical_nodes?.length || 0;
   const topicsCount = smart_topics?.length || 0;
 
   // 检查新纪要数据是否可用
@@ -132,10 +130,6 @@ export function OverviewView() {
           <div className={styles.statItem}>
             <div className={styles.statValue}>{todoCount}</div>
             <div className={styles.statLabel}>待办事项</div>
-          </div>
-          <div className={styles.statItem}>
-            <div className={styles.statValue}>{criticalNodesCount}</div>
-            <div className={styles.statLabel}>关键时刻</div>
           </div>
           <div className={styles.statItem}>
             <div className={styles.statValue}>{transcript?.length || 0}</div>

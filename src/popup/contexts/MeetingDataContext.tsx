@@ -56,10 +56,6 @@ export function MeetingDataProvider({
           '[MeetingDataContext] - todo_list:',
           response.data.todo_list
         );
-        console.log(
-          '[MeetingDataContext] - critical_nodes:',
-          response.data.critical_nodes
-        );
         setMeetingData(response.data);
         setError(null);
       } else {

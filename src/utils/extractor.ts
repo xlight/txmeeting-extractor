@@ -27,7 +27,6 @@ import {
   TimelineEvent,
   TodoItem,
   SmartTopic,
-  CriticalNode,
   RecordingFile,
   // 新增响应类型
   GetFullSummaryResponse,
@@ -35,7 +34,6 @@ import {
   GetTimeLineResponse,
   GetMulSummaryAndTodoResponse,
   GetSmartTopicResponse,
-  GetCriticalNodeResponse,
   GetMultiRecordFileResponse,
   // 新增类型守卫
   isGetFullSummaryResponse,
@@ -43,7 +41,6 @@ import {
   isGetTimeLineResponse,
   isGetMulSummaryAndTodoResponse,
   isGetSmartTopicResponse,
-  isGetCriticalNodeResponse,
   isGetMultiRecordFileResponse,
 } from '../types/meeting';
 
@@ -136,7 +133,6 @@ export function extractMeetingData(apiResponses: {
     speakerSummary?: GetMulSummaryAndTodoResponse;
   };
   smartTopic?: GetSmartTopicResponse;
-  criticalNode?: GetCriticalNodeResponse;
   multiRecordFile?: GetMultiRecordFileResponse;
 }): MeetingData | null {
   try {
@@ -151,7 +147,6 @@ export function extractMeetingData(apiResponses: {
       hasChapterSummary: !!apiResponses.mulSummaryAndTodo?.chapterSummary,
       hasSpeakerSummary: !!apiResponses.mulSummaryAndTodo?.speakerSummary,
       hasSmartTopic: !!apiResponses.smartTopic,
-      hasCriticalNode: !!apiResponses.criticalNode,
       hasRecordingFiles: !!apiResponses.multiRecordFile,
     });
 
@@ -197,10 +192,6 @@ export function extractMeetingData(apiResponses: {
       ? extractFromSmartTopic(apiResponses.smartTopic)
       : {};
 
-    const nodeData = apiResponses.criticalNode
-      ? extractFromCriticalNode(apiResponses.criticalNode)
-      : {};
-
     const fileData = apiResponses.multiRecordFile
       ? extractFromMultiRecordFile(apiResponses.multiRecordFile)
       : {};
@@ -215,7 +206,6 @@ export function extractMeetingData(apiResponses: {
       hasChapterSummary: !!todoData.chapter_summary_data,
       hasSpeakerSummary: !!todoData.speaker_summary_data,
       topicCount: topicData.smart_topics?.length || 0,
-      nodeCount: nodeData.critical_nodes?.length || 0,
       fileCount: fileData.recording_files?.length || 0,
     });
 
@@ -250,7 +240,6 @@ export function extractMeetingData(apiResponses: {
       timeline: timelineData.timeline,
       todo_list: todoData.todo_list,
       smart_topics: topicData.smart_topics,
-      critical_nodes: nodeData.critical_nodes,
       recording_files: fileData.recording_files,
 
       // 新增：三种纪要类型和待办事项
@@ -757,26 +746,6 @@ export function extractFromSmartTopic(
 }
 
 /**
- * 从 get-critical-node API 响应中提取关键节点
- */
-export function extractFromCriticalNode(
-  response: GetCriticalNodeResponse
-): Partial<MeetingData> {
-  if (!isGetCriticalNodeResponse(response) || !response.data) {
-    console.warn('[Extractor] 无效的 get-critical-node API 响应');
-    return {};
-  }
-
-  const { data } = response;
-
-  return {
-    critical_nodes: data.node_list
-      ?.map(convertCriticalNode)
-      .filter(Boolean) as CriticalNode[],
-  };
-}
-
-/**
  * 从 get-multi-record-file API 响应中提取录制文件
  */
 export function extractFromMultiRecordFile(
@@ -932,38 +901,6 @@ function convertSmartTopic(topic: {
     };
   } catch (error) {
     console.error('[Extractor] 转换智能话题失败:', error, topic);
-    return null;
-  }
-}
-
-/**
- * 转换关键节点数据
- */
-function convertCriticalNode(node: {
-  node_id: string;
-  node_time: number;
-  node_type: number;
-  title: string;
-  description: string;
-  participants?: string[];
-  importance?: number;
-}): CriticalNode | null {
-  try {
-    if (!node.node_id || !node.title) {
-      return null;
-    }
-
-    return {
-      node_id: node.node_id,
-      node_time: node.node_time,
-      node_type: node.node_type,
-      title: sanitizeText(node.title),
-      description: sanitizeText(node.description),
-      participants: node.participants,
-      importance: node.importance,
-    };
-  } catch (error) {
-    console.error('[Extractor] 转换关键节点失败:', error, node);
     return null;
   }
 }
