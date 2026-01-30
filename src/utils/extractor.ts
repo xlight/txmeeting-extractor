@@ -130,7 +130,11 @@ export function extractMeetingData(apiResponses: {
   fullSummary?: GetFullSummaryResponse;
   chapter?: GetChapterResponse;
   timeLine?: GetTimeLineResponse;
-  mulSummaryAndTodo?: GetMulSummaryAndTodoResponse;
+  mulSummaryAndTodo?: {
+    topicSummary?: GetMulSummaryAndTodoResponse;
+    chapterSummary?: GetMulSummaryAndTodoResponse;
+    speakerSummary?: GetMulSummaryAndTodoResponse;
+  };
   smartTopic?: GetSmartTopicResponse;
   criticalNode?: GetCriticalNodeResponse;
   multiRecordFile?: GetMultiRecordFileResponse;
@@ -143,7 +147,9 @@ export function extractMeetingData(apiResponses: {
       hasFullSummary: !!apiResponses.fullSummary,
       hasChapter: !!apiResponses.chapter,
       hasTimeLine: !!apiResponses.timeLine,
-      hasTodoList: !!apiResponses.mulSummaryAndTodo,
+      hasTopicSummary: !!apiResponses.mulSummaryAndTodo?.topicSummary,
+      hasChapterSummary: !!apiResponses.mulSummaryAndTodo?.chapterSummary,
+      hasSpeakerSummary: !!apiResponses.mulSummaryAndTodo?.speakerSummary,
       hasSmartTopic: !!apiResponses.smartTopic,
       hasCriticalNode: !!apiResponses.criticalNode,
       hasRecordingFiles: !!apiResponses.multiRecordFile,
@@ -203,7 +209,11 @@ export function extractMeetingData(apiResponses: {
       hasFullSummary: !!fullSummaryData.full_summary,
       chapterCount: chapterData.chapter_details?.length || 0,
       timelineCount: timelineData.timeline?.length || 0,
-      todoCount: todoData.todo_list?.length || 0,
+      todoListCount: todoData.todo_list?.length || 0,
+      todoItemsCount: todoData.todo_items?.length || 0,
+      hasTopicSummary: !!todoData.topic_summary_data,
+      hasChapterSummary: !!todoData.chapter_summary_data,
+      hasSpeakerSummary: !!todoData.speaker_summary_data,
       topicCount: topicData.smart_topics?.length || 0,
       nodeCount: nodeData.critical_nodes?.length || 0,
       fileCount: fileData.recording_files?.length || 0,
@@ -242,6 +252,12 @@ export function extractMeetingData(apiResponses: {
       smart_topics: topicData.smart_topics,
       critical_nodes: nodeData.critical_nodes,
       recording_files: fileData.recording_files,
+
+      // 新增：三种摘要类型和待办事项
+      topic_summary_data: todoData.topic_summary_data,
+      chapter_summary_data: todoData.chapter_summary_data,
+      speaker_summary_data: todoData.speaker_summary_data,
+      todo_items: todoData.todo_items,
 
       captured_at: Date.now(),
     };
@@ -535,23 +551,175 @@ export function extractFromTimeLine(
 }
 
 /**
- * 从 get-mul-summary-and-todo API 响应中提取待办事项
+ * 从 get-mul-summary-and-todo API 的多个响应中提取数据
+ * @param responses - 包含三种摘要类型响应的对象
  */
-export function extractFromMulSummaryAndTodo(
-  response: GetMulSummaryAndTodoResponse
-): Partial<MeetingData> {
-  if (!isGetMulSummaryAndTodoResponse(response) || !response.data) {
-    console.warn('[Extractor] 无效的 get-mul-summary-and-todo API 响应');
-    return {};
+export function extractFromMulSummaryAndTodo(responses: {
+  topicSummary?: GetMulSummaryAndTodoResponse;
+  chapterSummary?: GetMulSummaryAndTodoResponse;
+  speakerSummary?: GetMulSummaryAndTodoResponse;
+}): Partial<MeetingData> {
+  console.log('[Extractor] 🔍 开始提取 mulSummaryAndTodo 数据');
+  console.log('[Extractor] 输入响应:', {
+    hasTopicSummary: !!responses.topicSummary,
+    hasChapterSummary: !!responses.chapterSummary,
+    hasSpeakerSummary: !!responses.speakerSummary,
+  });
+
+  const result: Partial<MeetingData> = {};
+
+  // 提取主题摘要数据 (summary_type=8)
+  if (responses.topicSummary?.data?.topic_summary) {
+    const topicData = responses.topicSummary.data.topic_summary;
+    console.log('[Extractor] 🔍 原始主题摘要数据:', {
+      hasBeginSummary: !!topicData.begin_summary,
+      beginSummaryLength: topicData.begin_summary?.length || 0,
+      subPointsIsArray: Array.isArray(topicData.sub_points),
+      subPointsCount: topicData.sub_points?.length || 0,
+      subPointsRaw: topicData.sub_points,
+      hasEndSummary: !!topicData.end_summary,
+      endSummaryLength: topicData.end_summary?.length || 0,
+      summaryStatus: topicData.summary_status,
+    });
+
+    result.topic_summary_data = {
+      begin_summary: topicData.begin_summary || '',
+      sub_points: topicData.sub_points || [],
+      end_summary: topicData.end_summary || '',
+      summary_status: topicData.summary_status || 0,
+      lang: topicData.lang || '',
+      model_status: topicData.model_status || 0,
+    };
+    console.log('[Extractor] ✅ 提取主题摘要数据:', {
+      beginLength: result.topic_summary_data.begin_summary.length,
+      pointsCount: result.topic_summary_data.sub_points.length,
+      endLength: result.topic_summary_data.end_summary.length,
+      status: result.topic_summary_data.summary_status,
+    });
+  } else {
+    console.log('[Extractor] ⚠️ 未找到主题摘要数据', {
+      hasResponse: !!responses.topicSummary,
+      hasData: !!responses.topicSummary?.data,
+      hasTopicSummary: !!responses.topicSummary?.data?.topic_summary,
+    });
   }
 
-  const { data } = response;
+  // 提取分章节摘要数据 (summary_type=1)
+  if (responses.chapterSummary?.data?.chapter_summary) {
+    const chapterData = responses.chapterSummary.data.chapter_summary;
+    console.log('[Extractor] 🔍 原始分章节摘要数据:', {
+      summaryListIsArray: Array.isArray(chapterData.summary_list),
+      summaryListCount: chapterData.summary_list?.length || 0,
+      summaryStatus: chapterData.summary_status,
+    });
 
-  return {
-    todo_list: data.todo_list
-      ?.map(convertTodoItem)
-      .filter(Boolean) as TodoItem[],
-  };
+    result.chapter_summary_data = {
+      summary_list:
+        chapterData.summary_list?.map((item) => ({
+          chapter_id: item.chapter_id,
+          chapter_title: item.chapter_title || '', // 使用空字符串作为默认值
+          summary: item.summary,
+          start_time: item.start_time,
+          end_time: item.end_time,
+        })) || [],
+      summary_status: chapterData.summary_status || 0,
+      lang: chapterData.lang || '',
+      model_status: chapterData.model_status || 0,
+    };
+    console.log('[Extractor] ✅ 提取分章节摘要数据:', {
+      chaptersCount: result.chapter_summary_data.summary_list.length,
+      status: result.chapter_summary_data.summary_status,
+    });
+  } else {
+    console.log('[Extractor] ⚠️ 未找到分章节摘要数据');
+  }
+
+  // 提取发言人观点数据 (summary_type=4)
+  if (responses.speakerSummary?.data?.speaker_summary) {
+    const speakerData = responses.speakerSummary.data.speaker_summary;
+    console.log('[Extractor] 🔍 原始发言人观点数据:', {
+      speakersOpinionsIsArray: Array.isArray(speakerData.speakers_opinions),
+      speakersCount: speakerData.speakers_opinions?.length || 0,
+      customSummaryLength: speakerData.custom_summary?.length || 0,
+      summaryStatus: speakerData.summary_status,
+    });
+
+    result.speaker_summary_data = {
+      speakers_opinions: speakerData.speakers_opinions || [],
+      custom_summary: speakerData.custom_summary || '',
+      orig_custom_summary: speakerData.orig_custom_summary || '',
+      summary_status: speakerData.summary_status || 0,
+      lang: speakerData.lang || '',
+      model_status: speakerData.model_status || 0,
+    };
+    console.log('[Extractor] ✅ 提取发言人观点数据:', {
+      speakersCount: result.speaker_summary_data.speakers_opinions.length,
+      customSummaryLength: result.speaker_summary_data.custom_summary.length,
+      status: result.speaker_summary_data.summary_status,
+    });
+  } else {
+    console.log('[Extractor] ⚠️ 未找到发言人观点数据', {
+      hasResponse: !!responses.speakerSummary,
+      hasData: !!responses.speakerSummary?.data,
+      hasSpeakerSummary: !!responses.speakerSummary?.data?.speaker_summary,
+    });
+  }
+
+  // 提取待办事项数据 (仅 summary_type=4)
+  if (responses.speakerSummary?.data?.todo) {
+    const todoData = responses.speakerSummary.data.todo;
+    console.log('[Extractor] 🔍 原始待办事项数据:', {
+      hasTodoList: !!todoData.todo_list,
+      todoListIsArray: Array.isArray(todoData.todo_list),
+      todoListCount: todoData.todo_list?.length || 0,
+      todoStatus: todoData.todo_status,
+      todoListRaw: todoData.todo_list,
+    });
+
+    if (todoData.todo_status === 2) {
+      result.todo_items =
+        todoData.todo_list
+          ?.filter(
+            (item) => item.todo_id && item.todo_name // 确保必需字段存在
+          )
+          .map((item) => ({
+            todo_id: item.todo_id!,
+            todo_name: item.todo_name!,
+            todo_time: item.todo_time || '',
+            background: item.background || '',
+            persons: item.persons || [],
+            engine_type: item.engine_type || 0,
+            sort_by: item.sort_by || 0,
+          })) || [];
+      console.log('[Extractor] ✅ 提取待办事项数据:', {
+        todoCount: result.todo_items.length,
+        todoStatus: todoData.todo_status,
+      });
+    } else {
+      console.log('[Extractor] ⚠️ 待办事项状态不是成功状态:', {
+        todoStatus: todoData.todo_status,
+        expected: 2,
+      });
+    }
+  } else {
+    console.log('[Extractor] ⚠️ 未找到待办事项数据', {
+      hasResponse: !!responses.speakerSummary,
+      hasData: !!responses.speakerSummary?.data,
+      hasTodo: !!responses.speakerSummary?.data?.todo,
+    });
+  }
+
+  // 为了向后兼容，将旧的 todo_list 也提取出来
+  if (responses.speakerSummary?.data?.todo_list) {
+    result.todo_list = responses.speakerSummary.data.todo_list
+      .map(convertTodoItem)
+      .filter(Boolean) as TodoItem[];
+    console.log('[Extractor] ✅ 提取待办事项数据 (旧格式):', {
+      todoCount: result.todo_list.length,
+    });
+  }
+
+  return result;
 }
 
 /**

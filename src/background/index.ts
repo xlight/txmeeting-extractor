@@ -49,7 +49,12 @@ const apiResponseCache: Map<
     fullSummary?: GetFullSummaryResponse;
     chapter?: GetChapterResponse;
     timeLine?: GetTimeLineResponse;
-    mulSummaryAndTodo?: GetMulSummaryAndTodoResponse;
+    // 支持多个 summary_type 的 get-mul-summary-and-todo 响应
+    mulSummaryAndTodo?: {
+      topicSummary?: GetMulSummaryAndTodoResponse; // summary_type=8
+      chapterSummary?: GetMulSummaryAndTodoResponse; // summary_type=1
+      speakerSummary?: GetMulSummaryAndTodoResponse; // summary_type=4
+    };
     smartTopic?: GetSmartTopicResponse;
     criticalNode?: GetCriticalNodeResponse;
     multiRecordFile?: GetMultiRecordFileResponse;
@@ -128,9 +133,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleAPIResponse(payload: {
   url: string;
   data: unknown;
+  method?: string;
+  requestBody?: any;
 }): Promise<void> {
   console.log('[TXMeeting Background] 🔍 处理API响应:', payload.url);
   console.log('[TXMeeting Background] 📦 响应数据:', payload.data);
+  console.log('[TXMeeting Background] 📝 请求方法:', payload.method);
+  console.log('[TXMeeting Background] 📝 请求体:', payload.requestBody);
 
   try {
     // 识别API类型
@@ -303,10 +312,58 @@ async function handleAPIResponse(payload: {
       cache.timeLine = payload.data as GetTimeLineResponse;
       console.log('[TXMeeting Background] ✅ 已存储 get-time-line 响应');
     } else if (apiType === 'get-mul-summary-and-todo') {
-      cache.mulSummaryAndTodo = payload.data as GetMulSummaryAndTodoResponse;
+      // 从请求体中提取 summary_type
+      const summaryType = payload.requestBody?.summary_type;
+      const response = payload.data as GetMulSummaryAndTodoResponse;
+
       console.log(
-        '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应'
+        '[TXMeeting Background] 🔍 收到 get-mul-summary-and-todo 响应:',
+        {
+          summaryType,
+          hasData: !!response.data,
+          hasTopicSummary: !!response.data?.topic_summary,
+          hasChapterSummary: !!response.data?.chapter_summary,
+          hasSpeakerSummary: !!response.data?.speaker_summary,
+          hasTodo: !!response.data?.todo,
+          topicSubPointsCount:
+            response.data?.topic_summary?.sub_points?.length || 0,
+          chapterSummaryCount:
+            response.data?.chapter_summary?.summary_list?.length || 0,
+          speakerOpinionsCount:
+            response.data?.speaker_summary?.speakers_opinions?.length || 0,
+          todoCount: response.data?.todo?.todo_list?.length || 0,
+        }
       );
+
+      // 初始化 mulSummaryAndTodo 对象（如果不存在）
+      if (!cache.mulSummaryAndTodo) {
+        cache.mulSummaryAndTodo = {};
+      }
+
+      // 根据 summary_type 存储到对应的字段
+      if (summaryType === 8) {
+        cache.mulSummaryAndTodo.topicSummary = response;
+        console.log(
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (主题摘要, summary_type=8)'
+        );
+      } else if (summaryType === 1) {
+        cache.mulSummaryAndTodo.chapterSummary = response;
+        console.log(
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (分章节摘要, summary_type=1)'
+        );
+      } else if (summaryType === 4) {
+        cache.mulSummaryAndTodo.speakerSummary = response;
+        console.log(
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (发言人观点+待办, summary_type=4)'
+        );
+      } else {
+        console.warn(
+          '[TXMeeting Background] ⚠️ 未知的 summary_type:',
+          summaryType
+        );
+        // 作为备用,存储到 topicSummary
+        cache.mulSummaryAndTodo.topicSummary = response;
+      }
     } else if (apiType === 'get-smart-topic') {
       cache.smartTopic = payload.data as GetSmartTopicResponse;
       console.log('[TXMeeting Background] ✅ 已存储 get-smart-topic 响应');
@@ -329,7 +386,9 @@ async function handleAPIResponse(payload: {
       hasFullSummary: !!cache.fullSummary,
       hasChapter: !!cache.chapter,
       hasTimeLine: !!cache.timeLine,
-      hasMulSummaryAndTodo: !!cache.mulSummaryAndTodo,
+      hasTopicSummary: !!cache.mulSummaryAndTodo?.topicSummary,
+      hasChapterSummary: !!cache.mulSummaryAndTodo?.chapterSummary,
+      hasSpeakerSummary: !!cache.mulSummaryAndTodo?.speakerSummary,
       hasSmartTopic: !!cache.smartTopic,
       hasCriticalNode: !!cache.criticalNode,
       hasMultiRecordFile: !!cache.multiRecordFile,

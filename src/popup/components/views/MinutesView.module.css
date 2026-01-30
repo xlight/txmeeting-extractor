@@ -13,102 +13,70 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border-secondary);
+  border-bottom: 2px solid var(--color-border-secondary);
 }
 
 .title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
   color: var(--color-text-primary);
   margin: 0;
 }
 
-.copyButton {
-  padding: 8px 16px;
+.copyAllButton {
+  padding: 10px 20px;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
   background-color: var(--color-primary);
   color: #ffffff;
   font-size: var(--font-size-sm);
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-base);
-  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.copyButton:hover {
+.copyAllButton:hover {
   background-color: var(--color-primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
-.copyButton:active {
+.copyAllButton:active {
   transform: translateY(0);
 }
 
-.content {
+.copyAllButton:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 卡片容器 */
+.cardsContainer {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg);
-  background-color: var(--color-bg-container);
-  border-radius: var(--radius-md);
-  line-height: 1.8;
-  border: 1px solid var(--color-border-secondary);
+  padding-right: var(--spacing-xs);
 }
 
-/* Markdown 元素样式 */
-.h1 {
-  font-size: 24px;
-  font-weight: 700;
-  margin: var(--spacing-lg) 0 var(--spacing-md);
-  color: var(--color-text-primary);
-  border-bottom: 2px solid var(--color-border-secondary);
-  padding-bottom: var(--spacing-sm);
+/* 滚动条样式优化 */
+.cardsContainer::-webkit-scrollbar {
+  width: 8px;
 }
 
-.h1:first-child {
-  margin-top: 0;
+.cardsContainer::-webkit-scrollbar-track {
+  background: var(--color-bg-layout);
+  border-radius: var(--radius-sm);
 }
 
-.h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: var(--spacing-md) 0 var(--spacing-sm);
-  color: var(--color-text-primary);
+.cardsContainer::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: var(--radius-sm);
 }
 
-.h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: var(--spacing-sm) 0;
-  color: var(--color-text-primary);
-}
-
-.p {
-  margin: var(--spacing-sm) 0;
-  color: var(--color-text-primary);
-}
-
-.ul,
-.ol {
-  margin: var(--spacing-sm) 0;
-  padding-left: var(--spacing-lg);
-}
-
-.li {
-  margin: 4px 0;
-  color: var(--color-text-primary);
-}
-
-.strong {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.em {
-  font-style: italic;
-  color: var(--color-text-secondary);
+.cardsContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
 }
 
 /* 加载/空状态样式 */
@@ -129,6 +97,12 @@
   font-size: var(--font-size-base);
 }
 
+.emptyHint {
+  font-size: var(--font-size-sm) !important;
+  color: var(--color-text-tertiary) !important;
+  margin-top: var(--spacing-sm) !important;
+}
+
 .spinner {
   width: 40px;
   height: 40px;
@@ -142,23 +116,4 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-/* 滚动条样式优化 */
-.content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.content::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-sm);
-}
-
-.content::-webkit-scrollbar-thumb {
-  background: var(--color-border-primary);
-  border-radius: var(--radius-sm);
-}
-
-.content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
 }

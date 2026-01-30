@@ -203,7 +203,81 @@ export interface TimelineEvent {
 }
 
 /**
+ * 主题摘要数据 (summary_type=8)
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface TopicSummaryData {
+  begin_summary: string; // 开场总结
+  sub_points: Array<{
+    // 要点列表
+    title: string; // 要点标题
+    content: string; // 要点内容
+  }>;
+  end_summary: string; // 结束总结
+  summary_status: number; // 状态: 0=生成中, 1=失败, 2=成功
+  lang: string; // 语言
+  model_status: number; // 模型状态
+}
+
+/**
+ * 分章节摘要数据 (summary_type=1)
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface ChapterSummaryData {
+  summary_list: Array<{
+    // 章节摘要列表
+    chapter_id: string; // 章节 ID
+    chapter_title: string; // 章节标题
+    summary: string; // 章节摘要
+    start_time?: number; // 开始时间(毫秒)
+    end_time?: number; // 结束时间(毫秒)
+  }>;
+  summary_status: number; // 状态
+  lang: string;
+  model_status: number;
+}
+
+/**
+ * 发言人观点数据 (summary_type=4)
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface SpeakerSummaryData {
+  speakers_opinions: Array<{
+    // 发言人观点列表
+    speaker_id: string; // 发言人 ID/名称
+    sub_points: Array<{
+      // 观点列表
+      sub_point_title: string; // 观点主题
+      sub_point_vec_items: Array<{
+        point: string; // 具体观点
+        refs: any[]; // 引用(通常为空)
+      }>;
+    }>;
+  }>;
+  custom_summary: string; // 自定义摘要(HTML格式)
+  orig_custom_summary: string; // 原始自定义摘要(HTML格式)
+  summary_status: number;
+  lang: string;
+  model_status: number;
+}
+
+/**
+ * 待办事项数据
+ * 来自 get-mul-summary-and-todo API (summary_type=4)
+ */
+export interface TodoItemData {
+  todo_id: string; // 待办 ID
+  todo_name: string; // 待办名称
+  todo_time: string; // 提及时间
+  background: string; // 背景说明
+  persons: string[]; // 相关人员
+  engine_type: number; // 引擎类型
+  sort_by: number; // 排序
+}
+
+/**
  * 待办事项（来自 get-mul-summary-and-todo API）
+ * @deprecated 使用 TodoItemData 代替
  */
 export interface TodoItem {
   todo_id: string; // 待办 ID
@@ -285,6 +359,12 @@ export interface MeetingData {
   smart_topics?: SmartTopic[]; // 智能话题
   critical_nodes?: CriticalNode[]; // 关键节点/决策点
   recording_files?: RecordingFile[]; // 录制文件列表
+
+  // 新增字段（来自 get-mul-summary-and-todo API）
+  topic_summary_data?: TopicSummaryData; // 主题摘要
+  chapter_summary_data?: ChapterSummaryData; // 分章节摘要
+  speaker_summary_data?: SpeakerSummaryData; // 发言人观点
+  todo_items?: TodoItemData[]; // 待办事项（新格式）
 
   captured_at: number; // 数据捕获时间戳
 }
@@ -425,15 +505,20 @@ export interface GetMulSummaryAndTodoResponse {
   msg?: string;
   data?: {
     is_audio_detect_complete?: boolean;
+    // 分章节摘要 (summary_type=1)
     chapter_summary?: {
       summary_list?: Array<{
         chapter_id: string;
+        chapter_title?: string;
         summary: string;
+        start_time?: number;
+        end_time?: number;
       }>;
       summary_status?: number;
       lang?: string;
       model_status?: number;
     };
+    // 主题摘要 (summary_type=8)
     topic_summary?: {
       begin_summary?: string;
       sub_points?: Array<{
@@ -445,6 +530,38 @@ export interface GetMulSummaryAndTodoResponse {
       lang?: string;
       model_status?: number;
     };
+    // 发言人观点 (summary_type=4)
+    speaker_summary?: {
+      speakers_opinions?: Array<{
+        speaker_id: string;
+        sub_points: Array<{
+          sub_point_title: string;
+          sub_point_vec_items: Array<{
+            point: string;
+            refs: any[];
+          }>;
+        }>;
+      }>;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // 待办事项 (仅在 summary_type=4 时返回)
+    todo?: {
+      todo_list?: Array<{
+        todo_id?: string;
+        todo_name?: string;
+        todo_time?: string;
+        background?: string;
+        persons?: string[];
+        engine_type?: number;
+        sort_by?: number;
+      }>;
+      todo_status?: number;
+    };
+    // 旧格式待办列表（保留兼容性）
     todo_list?: Array<{
       todo_id?: string;
       content: string;

@@ -55,10 +55,35 @@ XMLHttpRequest.prototype.open = function (
 
 // 拦截 XMLHttpRequest.prototype.send
 XMLHttpRequest.prototype.send = function (
-  this: XMLHttpRequest & { _txmeeting_url?: string },
+  this: XMLHttpRequest & {
+    _txmeeting_url?: string;
+    _txmeeting_method?: string;
+    _txmeeting_body?: any;
+  },
   body?: Document | XMLHttpRequestBodyInit | null
 ) {
   const url = this._txmeeting_url;
+
+  // 保存请求体以便后续使用
+  if (body) {
+    try {
+      if (typeof body === 'string') {
+        this._txmeeting_body = JSON.parse(body);
+      } else if (body instanceof FormData) {
+        // FormData 需要特殊处理
+        const formDataObj: Record<string, any> = {};
+        body.forEach((value, key) => {
+          formDataObj[key] = value;
+        });
+        this._txmeeting_body = formDataObj;
+      } else {
+        this._txmeeting_body = body;
+      }
+    } catch (e) {
+      // 如果解析失败,保存原始body
+      this._txmeeting_body = body;
+    }
+  }
 
   // 屏蔽监控和埋点 URL
   if (url && shouldBlockURL(url)) {
@@ -73,37 +98,51 @@ XMLHttpRequest.prototype.send = function (
   ) {
     console.log(`[TXMeeting Injected] ✅ 匹配到腾讯会议 API: ${url}`);
 
-    this.addEventListener('load', function (this: XMLHttpRequest) {
-      try {
-        console.log(`[TXMeeting Injected] 📥 响应状态: ${this.status}`);
-
-        if (this.status === 200) {
-          let data;
-
-          // 处理不同的响应类型
-          if (this.responseType === '' || this.responseType === 'text') {
-            data = JSON.parse(this.responseText);
-          } else if (this.responseType === 'json') {
-            data = this.response;
-          }
-
-          if (data) {
-            console.log('[TXMeeting Injected] 📦 响应数据:', data);
-
-            // 通过 CustomEvent 传递给 Content Script
-            window.dispatchEvent(
-              new CustomEvent('TXMeetingAPIResponse', {
-                detail: { url: url, data: data },
-              })
-            );
-
-            console.log('[TXMeeting Injected] 📤 已发送 CustomEvent');
-          }
+    this.addEventListener(
+      'load',
+      function (
+        this: XMLHttpRequest & {
+          _txmeeting_url?: string;
+          _txmeeting_method?: string;
+          _txmeeting_body?: any;
         }
-      } catch (error) {
-        console.error('[TXMeeting Injected] ❌ 处理响应失败:', error);
+      ) {
+        try {
+          console.log(`[TXMeeting Injected] 📥 响应状态: ${this.status}`);
+
+          if (this.status === 200) {
+            let data;
+
+            // 处理不同的响应类型
+            if (this.responseType === '' || this.responseType === 'text') {
+              data = JSON.parse(this.responseText);
+            } else if (this.responseType === 'json') {
+              data = this.response;
+            }
+
+            if (data) {
+              console.log('[TXMeeting Injected] 📦 响应数据:', data);
+
+              // 通过 CustomEvent 传递给 Content Script (包含请求体)
+              window.dispatchEvent(
+                new CustomEvent('TXMeetingAPIResponse', {
+                  detail: {
+                    url: this._txmeeting_url,
+                    data: data,
+                    method: this._txmeeting_method,
+                    requestBody: this._txmeeting_body, // 传递请求体
+                  },
+                })
+              );
+
+              console.log('[TXMeeting Injected] 📤 已发送 CustomEvent');
+            }
+          }
+        } catch (error) {
+          console.error('[TXMeeting Injected] ❌ 处理响应失败:', error);
+        }
       }
-    });
+    );
   }
 
   return originalSend.call(this, body);
@@ -121,6 +160,40 @@ window.fetch = async function (...args) {
       : args[0] instanceof Request
         ? args[0].url
         : String(args[0]);
+
+  // 提取请求选项
+  const options = typeof args[0] === 'string' ? args[1] : undefined;
+  let requestBody: any;
+
+  // 尝试解析请求体
+  if (options?.body) {
+    try {
+      if (typeof options.body === 'string') {
+        requestBody = JSON.parse(options.body);
+      } else if (options.body instanceof FormData) {
+        const formDataObj: Record<string, any> = {};
+        options.body.forEach((value: FormDataEntryValue, key: string) => {
+          formDataObj[key] = value;
+        });
+        requestBody = formDataObj;
+      } else {
+        requestBody = options.body;
+      }
+    } catch (e) {
+      requestBody = options?.body;
+    }
+  } else if (args[0] instanceof Request && args[0].body) {
+    try {
+      // Request 对象的 body 是 ReadableStream,需要克隆后读取
+      const clonedRequest = args[0].clone();
+      const bodyText = await clonedRequest.text();
+      if (bodyText) {
+        requestBody = JSON.parse(bodyText);
+      }
+    } catch (e) {
+      // 忽略解析错误
+    }
+  }
 
   // 屏蔽监控和埋点 URL
   if (shouldBlockURL(url)) {
@@ -146,7 +219,12 @@ window.fetch = async function (...args) {
 
       window.dispatchEvent(
         new CustomEvent('TXMeetingAPIResponse', {
-          detail: { url: url, data: data },
+          detail: {
+            url: url,
+            data: data,
+            method: options?.method || (args[0] as Request)?.method || 'GET',
+            requestBody: requestBody, // 传递请求体
+          },
         })
       );
 
