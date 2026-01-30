@@ -1,6 +1,6 @@
 /**
- * SummaryView 组件 - 会议摘要视图
- * 展示主题摘要、分章节摘要、发言人观点和待办事项
+ * SummaryView 组件 - 会议纪要视图
+ * 展示主题纪要、分章节纪要、发言人观点和待办事项
  */
 
 import React, { useCallback, useMemo } from 'react';
@@ -20,7 +20,7 @@ export function SummaryView() {
   const { meetingData, isLoading } = useMeetingData();
   const { toast, showToast } = useToast();
 
-  // 提取摘要数据
+  // 提取纪要数据
   const {
     topic_summary_data,
     chapter_summary_data,
@@ -40,7 +40,7 @@ export function SummaryView() {
   const hasAnyData =
     hasTopicSummary || hasChapterSummary || hasSpeakerSummary || hasTodos;
 
-  // 生成完整的 Markdown 摘要
+  // 生成完整的 Markdown 纪要
   const completeMarkdown = useMemo(() => {
     if (!meetingData) return '';
     return generateCompleteMinutesMarkdown(
@@ -61,11 +61,11 @@ export function SummaryView() {
     todo_items,
   ]);
 
-  // 复制全部摘要
+  // 复制全部纪要
   const handleCopyAll = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(completeMarkdown);
-      showToast('已复制完整摘要到剪贴板');
+      showToast('已复制完整纪要到剪贴板');
     } catch (error) {
       console.error('[SummaryView] 复制失败:', error);
       showToast('复制失败，请重试');
@@ -100,13 +100,13 @@ export function SummaryView() {
     );
   }
 
-  // 摘要数据全部不可用
+  // 纪要数据全部不可用
   if (!hasAnyData) {
     return (
       <div className={styles.emptyState}>
-        <p>暂无会议摘要数据</p>
+        <p>暂无会议纪要数据</p>
         <p className={styles.emptyHint}>
-          会议摘要可能正在生成中，请稍后刷新页面重试
+          会议纪要可能正在生成中，请稍后刷新页面重试
         </p>
       </div>
     );
@@ -116,31 +116,31 @@ export function SummaryView() {
     <div className={styles.summaryView}>
       {/* 头部 */}
       <div className={styles.header}>
-        <h2 className={styles.title}>会议摘要</h2>
+        <h2 className={styles.title}>会议纪要</h2>
         <button
           className={styles.copyAllButton}
           onClick={handleCopyAll}
-          aria-label="复制完整摘要"
+          aria-label="复制完整纪要"
         >
-          📋 复制全部摘要
+          📋 复制全部纪要
         </button>
       </div>
 
-      {/* 摘要卡片列表 */}
+      {/* 纪要卡片列表 */}
       <div className={styles.cardsContainer}>
-        {/* 主题摘要卡片 */}
+        {/* 主题纪要卡片 */}
         {hasTopicSummary && (
           <TopicSummaryCard
             data={topic_summary_data}
-            onCopy={() => handleCardCopy('主题摘要')}
+            onCopy={() => handleCardCopy('主题纪要')}
           />
         )}
 
-        {/* 分章节摘要卡片 */}
+        {/* 分章节纪要卡片 */}
         {hasChapterSummary && (
           <ChapterSummaryCard
             data={chapter_summary_data}
-            onCopy={() => handleCardCopy('分章节摘要')}
+            onCopy={() => handleCardCopy('分章节纪要')}
           />
         )}
 
