@@ -19,7 +19,7 @@ export function exportToMarkdown(data: MeetingData): void {
 /**
  * 生成Markdown内容
  */
-function generateMarkdown(data: MeetingData): string {
+export function generateMarkdown(data: MeetingData): string {
   const sections: string[] = [];
 
   // 标题
