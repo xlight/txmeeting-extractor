@@ -190,6 +190,24 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
     });
   }
 
+  // 智能话题（新增）
+  if (meetingData.smart_topics && meetingData.smart_topics.length > 0) {
+    minutes += `## 智能话题\n\n`;
+    meetingData.smart_topics.forEach((topic, index) => {
+      minutes += `### ${index + 1}. ${topic.topic_name}\n\n`;
+      minutes += `**占比**: ${(topic.percentage * 100).toFixed(1)}%\n\n`;
+      if (topic.scope && topic.scope.length > 0) {
+        minutes += `**相关时间段**:\n`;
+        topic.scope.forEach((range) => {
+          const startMs = parseInt(range.start_time);
+          const endMs = parseInt(range.end_time);
+          minutes += `- ${formatTime(startMs)} - ${formatTime(endMs)}\n`;
+        });
+        minutes += `\n`;
+      }
+    });
+  }
+
   // 章节内容
   if (meetingData.chapters && meetingData.chapters.length > 0) {
     minutes += `## 会议章节\n\n`;

@@ -314,24 +314,42 @@ async function handleAPIResponse(payload: {
       const summaryType = payload.requestBody?.summary_type;
       const response = payload.data as GetMulSummaryAndTodoResponse;
 
+      // 🔍 增强调试日志
       console.log(
-        '[TXMeeting Background] 🔍 收到 get-mul-summary-and-todo 响应:',
-        {
-          summaryType,
-          hasData: !!response.data,
-          hasTopicSummary: !!response.data?.topic_summary,
-          hasChapterSummary: !!response.data?.chapter_summary,
-          hasSpeakerSummary: !!response.data?.speaker_summary,
-          hasTodo: !!response.data?.todo,
-          topicSubPointsCount:
-            response.data?.topic_summary?.sub_points?.length || 0,
-          chapterSummaryCount:
-            response.data?.chapter_summary?.summary_list?.length || 0,
-          speakerOpinionsCount:
-            response.data?.speaker_summary?.speakers_opinions?.length || 0,
-          todoCount: response.data?.todo?.todo_list?.length || 0,
-        }
+        '[TXMeeting Background] 🔍 收到 get-mul-summary-and-todo 响应:'
       );
+      console.log('  📝 请求方法:', payload.method);
+      console.log('  📦 请求体原始数据:', payload.requestBody);
+      console.log('  🏷️ summary_type 值:', summaryType);
+      console.log('  📊 响应数据概览:', {
+        hasData: !!response.data,
+        hasTopicSummary: !!response.data?.topic_summary,
+        hasChapterSummary: !!response.data?.chapter_summary,
+        hasSpeakerSummary: !!response.data?.speaker_summary,
+        hasTodo: !!response.data?.todo,
+        topicSubPointsCount:
+          response.data?.topic_summary?.sub_points?.length || 0,
+        chapterSummaryCount:
+          response.data?.chapter_summary?.summary_list?.length || 0,
+        speakerOpinionsCount:
+          response.data?.speaker_summary?.speakers_opinions?.length || 0,
+        todoCount: response.data?.todo?.todo_list?.length || 0,
+      });
+
+      // 如果有 topic_summary 数据，详细打印
+      if (response.data?.topic_summary) {
+        console.log('  ✨ 主题纪要详情:');
+        console.log('    - 状态:', response.data.topic_summary.summary_status);
+        console.log(
+          '    - 开场总结:',
+          response.data.topic_summary.begin_summary?.substring(0, 50)
+        );
+        console.log(
+          '    - 结束总结:',
+          response.data.topic_summary.end_summary?.substring(0, 50)
+        );
+        console.log('    - 要点列表:', response.data.topic_summary.sub_points);
+      }
 
       // 初始化 mulSummaryAndTodo 对象（如果不存在）
       if (!cache.mulSummaryAndTodo) {
@@ -359,8 +377,28 @@ async function handleAPIResponse(payload: {
           '[TXMeeting Background] ⚠️ 未知的 summary_type:',
           summaryType
         );
-        // 作为备用,存储到 topicSummary
-        cache.mulSummaryAndTodo.topicSummary = response;
+        console.warn('  请求体:', payload.requestBody);
+        console.warn('  响应数据中包含的字段:');
+        console.warn('    - topic_summary:', !!response.data?.topic_summary);
+        console.warn(
+          '    - chapter_summary:',
+          !!response.data?.chapter_summary
+        );
+        console.warn(
+          '    - speaker_summary:',
+          !!response.data?.speaker_summary
+        );
+        // 根据响应数据中实际包含的字段来决定存储位置
+        if (response.data?.topic_summary) {
+          console.warn('  → 检测到 topic_summary，存储为主题纪要');
+          cache.mulSummaryAndTodo.topicSummary = response;
+        } else if (response.data?.chapter_summary) {
+          console.warn('  → 检测到 chapter_summary，存储为分章节纪要');
+          cache.mulSummaryAndTodo.chapterSummary = response;
+        } else if (response.data?.speaker_summary) {
+          console.warn('  → 检测到 speaker_summary，存储为发言人观点');
+          cache.mulSummaryAndTodo.speakerSummary = response;
+        }
       }
     } else if (apiType === 'get-smart-topic') {
       cache.smartTopic = payload.data as GetSmartTopicResponse;
