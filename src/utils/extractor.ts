@@ -248,6 +248,9 @@ export function extractMeetingData(apiResponses: {
       speaker_summary_data: todoData.speaker_summary_data,
       todo_items: todoData.todo_items,
 
+      // AI 模型纪要
+      deepseek_summary_data: todoData.deepseek_summary_data,
+
       captured_at: Date.now(),
     };
 
@@ -269,6 +272,16 @@ export function extractMeetingData(apiResponses: {
     }
 
     console.log('[Extractor] ✅ 数据提取成功');
+    console.log(
+      '[Extractor] 🔍 最终数据包含 DeepSeek 纪要?',
+      !!mergedData.deepseek_summary_data
+    );
+    if (mergedData.deepseek_summary_data) {
+      console.log('[Extractor] 🔍 DeepSeek 纪要状态:', {
+        status: mergedData.deepseek_summary_data.summary_status,
+        pointsCount: mergedData.deepseek_summary_data.sub_points?.length || 0,
+      });
+    }
     return mergedData;
   } catch (error) {
     console.error('[Extractor] 提取会议数据失败:', error);

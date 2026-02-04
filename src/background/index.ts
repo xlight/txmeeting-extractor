@@ -561,6 +561,16 @@ async function handleAPIResponse(payload: {
       '[TXMeeting Background] ✅ 会议数据提取成功:',
       meetingData.metadata
     );
+    console.log(
+      '[TXMeeting Background] 🔍 提取的数据包含 DeepSeek 纪要?',
+      !!meetingData.deepseek_summary_data
+    );
+    if (meetingData.deepseek_summary_data) {
+      console.log('[TXMeeting Background] 🔍 DeepSeek 纪要详情:', {
+        status: meetingData.deepseek_summary_data.summary_status,
+        pointsCount: meetingData.deepseek_summary_data.sub_points?.length || 0,
+      });
+    }
 
     // 使用全局上下文的缓存键（更可靠）
     const cacheKey = meetingKey;
