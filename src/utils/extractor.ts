@@ -28,6 +28,11 @@ import {
   TodoItem,
   SmartTopic,
   RecordingFile,
+  // UI 展示类型
+  TopicInfo,
+  ParticipantSpeakingTime,
+  ChapterInfo,
+  MeetingStatistics,
   // 新增响应类型
   GetFullSummaryResponse,
   GetChapterResponse,
@@ -57,12 +62,20 @@ export function extractFromMinutesDetail(
 
   const { minutes } = response;
 
+  console.log('[DEBUG] extractFromMinutesDetail - 原始 keywords:', {
+    rawKeywords: minutes.keywords,
+    type: typeof minutes.keywords,
+    isArray: Array.isArray(minutes.keywords),
+    length: minutes.keywords?.length,
+  });
+
   return {
     // 转写内容：将 3 层嵌套结构（paragraphs → sentences → words）转换为扁平化的段落列表
     transcript: convertParagraphsToSegments(minutes.paragraphs || []),
 
     // 关键词
-    keywords: minutes.keywords?.map((k) => k.keyword).filter(Boolean),
+    // API 返回的是字符串数组：["关键词1", "关键词2"]
+    keywords: minutes.keywords,
 
     // 章节
     chapters: minutes.chapters
@@ -160,6 +173,8 @@ export function extractMeetingData(apiResponses: {
       hasSummary: !!minutesData.summary,
       transcriptCount: minutesData.transcript?.length || 0,
       keywordsCount: minutesData.keywords?.length || 0,
+      keywords: minutesData.keywords,
+      fullMinutesData: minutesData,
     });
 
     const recordData = apiResponses.commonRecordInfo
@@ -222,6 +237,13 @@ export function extractMeetingData(apiResponses: {
           }))
         : minutesData.chapters;
 
+    console.log('[Extractor] 🔍 准备合并数据，keywords 详情:', {
+      minutesDataKeywords: minutesData.keywords,
+      minutesDataKeywordsType: typeof minutesData.keywords,
+      minutesDataKeywordsIsArray: Array.isArray(minutesData.keywords),
+      minutesDataKeywordsLength: minutesData.keywords?.length,
+    });
+
     const mergedData: MeetingData = {
       // 核心数据
       metadata:
@@ -255,6 +277,12 @@ export function extractMeetingData(apiResponses: {
     };
 
     console.log('[Extractor] 合并后的 metadata:', mergedData.metadata);
+    console.log('[Extractor] 🔍 最终 mergedData.keywords:', {
+      keywords: mergedData.keywords,
+      type: typeof mergedData.keywords,
+      isArray: Array.isArray(mergedData.keywords),
+      length: mergedData.keywords?.length,
+    });
 
     // 验证必要字段（如果两个都没有，说明数据可能有问题）
     // 但我们允许在 background script 中稍后补充这些 ID
@@ -1142,4 +1170,277 @@ function convertRecordingFile(file: {
     console.error('[Extractor] 转换录制文件失败:', error, file);
     return null;
   }
+}
+
+// ==================== UI 展示数据提取函数 ====================
+
+/**
+ * 从 get-smart-topic API 响应中提取智能话题（用于 UI 展示）
+ * @param response - get-smart-topic API 响应
+ * @returns 智能话题列表，按占比从高到低排序
+ */
+export function extractTopicInfos(
+  response: GetSmartTopicResponse
+): TopicInfo[] {
+  if (!isGetSmartTopicResponse(response) || !response.data?.topic_infos) {
+    console.warn('[Extractor] 无效的 get-smart-topic 响应或缺少 topic_infos');
+    return [];
+  }
+
+  const topics = response.data.topic_infos
+    .map((topic) => {
+      const startTime = parseNumber(topic.start_time);
+      const endTime = parseNumber(topic.end_time);
+
+      // 验证必需字段
+      if (!topic.topic_id || !topic.topic_name || !startTime || !endTime) {
+        console.warn('[Extractor] 话题数据缺少必需字段，已跳过:', topic);
+        return null;
+      }
+
+      // 计算时长
+      const duration = endTime - startTime;
+      if (duration < 0) {
+        console.warn('[Extractor] 话题时长为负数，已跳过:', {
+          topic_id: topic.topic_id,
+          startTime,
+          endTime,
+          duration,
+        });
+        return null;
+      }
+
+      return {
+        id: topic.topic_id,
+        name: topic.topic_name,
+        duration,
+        percentage: topic.percentage || 0,
+        startTime,
+        endTime,
+      };
+    })
+    .filter((topic): topic is TopicInfo => topic !== null);
+
+  // 按占比从高到低排序
+  topics.sort((a, b) => b.percentage - a.percentage);
+
+  console.log('[Extractor] 提取智能话题数据:', {
+    count: topics.length,
+    topics: topics.map((t) => ({ name: t.name, percentage: t.percentage })),
+  });
+
+  return topics;
+}
+
+/**
+ * 从 get-time-line API 响应中提取参会人员发言时长（用于 UI 展示）
+ * @param response - get-time-line API 响应
+ * @returns 参会人员发言统计列表，按发言时长从高到低排序
+ */
+export function extractParticipantSpeakingTimes(
+  response: GetTimeLineResponse
+): ParticipantSpeakingTime[] {
+  if (!isGetTimeLineResponse(response) || !response.data?.timelines) {
+    console.warn('[Extractor] 无效的 get-time-line 响应或缺少 timelines');
+    return [];
+  }
+
+  // 第一步：提取基本数据并计算总时长
+  const rawData: Array<{
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    totalTime: number;
+  }> = [];
+  let totalTime = 0;
+
+  for (const p of response.data.timelines) {
+    const time = parseNumber(p.total_time);
+
+    // 验证必需字段
+    if (!p.user_id || !p.user_name || time === undefined || time < 0) {
+      console.warn('[Extractor] 参会人员数据缺少必需字段，已跳过:', p);
+      continue;
+    }
+
+    rawData.push({
+      id: p.user_id,
+      name: p.user_name,
+      avatarUrl: p.avatar_url,
+      totalTime: time,
+    });
+    totalTime += time;
+  }
+
+  // 第二步：计算占比
+  const result: ParticipantSpeakingTime[] = rawData.map((p) => ({
+    id: p.id,
+    name: p.name,
+    avatarUrl: p.avatarUrl,
+    totalTime: p.totalTime,
+    percentage: totalTime > 0 ? (p.totalTime / totalTime) * 100 : 0,
+  }));
+
+  // 第三步：按发言时长从高到低排序
+  result.sort((a, b) => b.totalTime - a.totalTime);
+
+  console.log('[Extractor] 提取参会人员发言时长:', {
+    count: result.length,
+    totalTime,
+  });
+
+  return result;
+}
+
+/**
+ * 从 get-chapter API 响应中提取会议章节（用于 UI 展示，增强版）
+ * @param response - get-chapter API 响应
+ * @param meetingDuration - 会议总时长（毫秒）
+ * @returns 会议章节列表，按开始时间排序
+ */
+export function extractChapterInfos(
+  response: GetChapterResponse,
+  meetingDuration: number
+): ChapterInfo[] {
+  if (!isGetChapterResponse(response) || !response.data?.chapter_list) {
+    console.warn('[Extractor] 无效的 get-chapter 响应或缺少 chapter_list');
+    return [];
+  }
+
+  // 第一步：提取基本数据并验证
+  const rawChapters: Array<{
+    id: string;
+    title: string;
+    startTime: number;
+    summary?: string;
+  }> = [];
+
+  for (const ch of response.data.chapter_list) {
+    // 验证必需字段
+    if (
+      !ch.chapter_id ||
+      !ch.title ||
+      ch.start_time === undefined ||
+      ch.start_time < 0
+    ) {
+      console.warn('[Extractor] 章节数据缺少必需字段或时间异常，已跳过:', ch);
+      continue;
+    }
+
+    rawChapters.push({
+      id: ch.chapter_id,
+      title: ch.title,
+      startTime: ch.start_time,
+      summary: ch.summary,
+    });
+  }
+
+  // 第二步：按开始时间排序
+  rawChapters.sort((a, b) => a.startTime - b.startTime);
+
+  // 第三步：计算时长、结束时间和占比
+  const result: ChapterInfo[] = rawChapters.map((ch, index) => {
+    const endTime =
+      index < rawChapters.length - 1
+        ? rawChapters[index + 1].startTime
+        : meetingDuration;
+    const duration = Math.max(0, endTime - ch.startTime); // 确保时长非负
+    const percentage =
+      meetingDuration > 0 ? (duration / meetingDuration) * 100 : 0;
+
+    return {
+      id: ch.id,
+      title: ch.title,
+      startTime: ch.startTime,
+      endTime,
+      duration,
+      percentage,
+      summary: ch.summary,
+      coverUrl: undefined, // get-chapter API 不返回 cover_url
+    };
+  });
+
+  console.log('[Extractor] 提取会议章节:', {
+    count: result.length,
+    meetingDuration,
+  });
+
+  return result;
+}
+
+/**
+ * 从会议数据中提取统计信息（汇总三类数据）
+ * @param meetingData - 完整会议数据
+ * @returns 会议统计数据
+ */
+export function extractMeetingStatistics(
+  meetingData: MeetingData
+): MeetingStatistics {
+  const statistics: MeetingStatistics = {
+    topics: [],
+    participants: [],
+    chapters: [],
+  };
+
+  // 从 smart_topics 提取（如果存在原始响应，应该使用 extractTopicInfos）
+  // 这里假设 smart_topics 已经在 meetingData 中存在
+  if (meetingData.smart_topics && meetingData.smart_topics.length > 0) {
+    statistics.topics = meetingData.smart_topics
+      .map((topic) => {
+        const startTime = parseNumber(topic.start_time);
+        const endTime = parseNumber(topic.end_time);
+
+        if (!startTime || !endTime) return null;
+
+        return {
+          id: topic.topic_id,
+          name: topic.topic_name,
+          duration: endTime - startTime,
+          percentage: topic.percentage || 0,
+          startTime,
+          endTime,
+        };
+      })
+      .filter((t): t is TopicInfo => t !== null)
+      .sort((a, b) => b.percentage - a.percentage);
+  }
+
+  // 从 chapter_details 提取章节信息
+  if (meetingData.chapter_details && meetingData.chapter_details.length > 0) {
+    const meetingDuration = meetingData.metadata?.duration || 0;
+    statistics.chapters = meetingData.chapter_details
+      .map((ch) => ({
+        id: ch.chapter_id,
+        title: ch.title,
+        startTime: ch.start_time,
+        coverUrl: undefined, // chapter_details 没有 cover_url
+        summary: ch.summary,
+        duration: 0,
+        percentage: 0,
+        endTime: 0,
+      }))
+      .sort((a, b) => a.startTime - b.startTime)
+      .map((ch, index, arr) => {
+        const endTime =
+          index < arr.length - 1 ? arr[index + 1].startTime : meetingDuration;
+        const duration = endTime - ch.startTime;
+        const percentage =
+          meetingDuration > 0 ? (duration / meetingDuration) * 100 : 0;
+
+        return {
+          ...ch,
+          endTime,
+          duration,
+          percentage,
+        };
+      });
+  }
+
+  console.log('[Extractor] 提取会议统计数据:', {
+    topicsCount: statistics.topics.length,
+    participantsCount: statistics.participants.length,
+    chaptersCount: statistics.chapters.length,
+  });
+
+  return statistics;
 }

@@ -64,7 +64,7 @@ describe('Extractor Utility Functions', () => {
               },
             },
           ],
-          keywords: [{ keyword: '关键词1' }, { keyword: '关键词2' }],
+          keywords: ['关键词1', '关键词2'],
           chapters: [
             {
               chapter_id: 'ch1',
@@ -311,21 +311,23 @@ describe('Extractor Utility Functions', () => {
     it('should sanitize text to prevent XSS', () => {
       const maliciousText = '<script>alert("XSS")</script>';
       const sanitized = sanitizeText(maliciousText);
-      
-      expect(sanitized).toBe('&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;');
+
+      expect(sanitized).toBe(
+        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;&#x2F;script&gt;'
+      );
     });
 
     it('should handle normal text correctly', () => {
       const normalText = 'Hello, World!';
       const sanitized = sanitizeText(normalText);
-      
+
       expect(sanitized).toBe('Hello, World!');
     });
 
     it('should handle empty text', () => {
       const emptyText = '';
       const sanitized = sanitizeText(emptyText);
-      
+
       expect(sanitized).toBe('');
     });
   });
@@ -334,7 +336,7 @@ describe('Extractor Utility Functions', () => {
     it('should format timestamp to readable format', () => {
       const timestamp = 1640995200000; // 2022-01-01 00:00:00 UTC
       const formatted = formatTimestamp(timestamp);
-      
+
       // Format depends on local timezone, but should contain date/time elements
       expect(formatted).toContain('2022');
     });
@@ -590,7 +592,7 @@ describe('Extractor Utility Functions', () => {
       };
 
       const result = extractFromMulSummaryAndTodo(mockResponses);
-      
+
       expect(result.topic_summary_data).toBeDefined();
       expect(result.chapter_summary_data).toBeDefined();
       expect(result.speaker_summary_data).toBeDefined();

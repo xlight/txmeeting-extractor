@@ -19,7 +19,12 @@ import {
   GetSmartTopicResponse,
   GetMultiRecordFileResponse,
 } from '../types/meeting';
-import { extractMeetingData } from '../utils/extractor';
+import {
+  extractMeetingData,
+  extractTopicInfos,
+  extractParticipantSpeakingTimes,
+  extractChapterInfos,
+} from '../utils/extractor';
 
 // 腾讯会议API端点
 const TENCENT_MEETING_API_PATTERNS = [
@@ -152,16 +157,29 @@ async function handleAPIResponse(payload: {
     // 尝试从URL提取会议标识
     const urlMeetingIds = extractMeetingIdsFromURL(payload.url);
 
+    // 尝试从请求体中提取会议标识（统计类API的ID在请求体中）
+    const requestBodyMeetingIds = extractMeetingIdsFromRequestBody(
+      apiType,
+      payload.requestBody
+    );
+
     // 尝试从响应体中提取会议标识（某些API的ID在响应体中）
-    const bodyMeetingIds = extractMeetingIdsFromResponseBody(
+    const responseBodyMeetingIds = extractMeetingIdsFromResponseBody(
       apiType,
       payload.data
     );
 
-    // 合并URL和响应体中的会议标识
+    // 合并URL、请求体和响应体中的会议标识
+    // 优先级：请求体 > 响应体 > URL参数（因为统计API的ID在请求体中最准确）
     const extractedIds = {
-      meetingId: urlMeetingIds.meetingId || bodyMeetingIds.meetingId,
-      recordingId: urlMeetingIds.recordingId || bodyMeetingIds.recordingId,
+      meetingId:
+        requestBodyMeetingIds.meetingId ||
+        responseBodyMeetingIds.meetingId ||
+        urlMeetingIds.meetingId,
+      recordingId:
+        requestBodyMeetingIds.recordingId ||
+        responseBodyMeetingIds.recordingId ||
+        urlMeetingIds.recordingId,
     };
 
     // 更新全局会议上下文（如果有新信息）
@@ -217,7 +235,11 @@ async function handleAPIResponse(payload: {
       );
       console.warn('[TXMeeting Background] 当前上下文:', currentMeetingContext);
       console.warn('[TXMeeting Background] URL参数:', urlMeetingIds);
-      console.warn('[TXMeeting Background] 响应体参数:', bodyMeetingIds);
+      console.warn('[TXMeeting Background] 请求体参数:', requestBodyMeetingIds);
+      console.warn(
+        '[TXMeeting Background] 响应体参数:',
+        responseBodyMeetingIds
+      );
       // 暂存这个响应，等待其他API提供会议标识
       // TODO: 实现暂存机制
       return;
@@ -247,6 +269,21 @@ async function handleAPIResponse(payload: {
     if (apiType === 'minutes/detail') {
       const newResponse = payload.data as MinutesDetailResponse;
 
+      // 🔍 强制输出 API 响应进行调试
+      console.log(
+        '[DEBUG] minutes/detail API 响应完整数据:',
+        JSON.stringify(newResponse, null, 2)
+      );
+
+      // 如果关键词为空，提醒用户可能需要等待关键词生成
+      if (
+        !newResponse.minutes?.keywords ||
+        newResponse.minutes.keywords.length === 0
+      ) {
+        console.log('[DEBUG] ⚠️ 关键词为空，可能需要等待 AI 生成关键词');
+        console.log('[DEBUG] 建议等待几分钟后刷新页面，让系统有时间生成关键词');
+      }
+
       // 检查是否已有数据（分页合并）
       if (
         cache.minutesDetail &&
@@ -267,6 +304,12 @@ async function handleAPIResponse(payload: {
         // 更新其他字段（使用最新的值）
         cache.minutesDetail.minutes.keywords =
           newResponse.minutes.keywords || cache.minutesDetail.minutes.keywords;
+
+        console.log('[DEBUG] 合并后的 keywords:', {
+          keywords: cache.minutesDetail.minutes.keywords,
+          length: cache.minutesDetail.minutes.keywords?.length,
+        });
+
         cache.minutesDetail.minutes.chapters =
           newResponse.minutes.chapters || cache.minutesDetail.minutes.chapters;
         cache.minutesDetail.minutes.summary =
@@ -296,6 +339,14 @@ async function handleAPIResponse(payload: {
           '[TXMeeting Background] 📄 还有更多数据:',
           newResponse.more
         );
+
+        // 🔍 调试：检查原始 API 响应中的 keywords
+        console.log('[DEBUG] API 响应中的 keywords:', {
+          rawKeywords: newResponse.minutes?.keywords,
+          type: typeof newResponse.minutes?.keywords,
+          isArray: Array.isArray(newResponse.minutes?.keywords),
+          length: newResponse.minutes?.keywords?.length,
+        });
       }
     } else if (apiType === 'common-record-info') {
       cache.commonRecordInfo = payload.data as CommonRecordInfoResponse;
@@ -561,6 +612,12 @@ async function handleAPIResponse(payload: {
       '[TXMeeting Background] ✅ 会议数据提取成功:',
       meetingData.metadata
     );
+    console.log('[TXMeeting Background] 🔍 提取的 keywords:', {
+      keywords: meetingData.keywords,
+      type: typeof meetingData.keywords,
+      isArray: Array.isArray(meetingData.keywords),
+      length: meetingData.keywords?.length,
+    });
     console.log(
       '[TXMeeting Background] 🔍 提取的数据包含 DeepSeek 纪要?',
       !!meetingData.deepseek_summary_data
@@ -571,6 +628,70 @@ async function handleAPIResponse(payload: {
         pointsCount: meetingData.deepseek_summary_data.sub_points?.length || 0,
       });
     }
+
+    // 提取统计数据（智能话题、参会人员、章节）
+    console.log('[TXMeeting Background] 🔄 开始提取统计数据...');
+
+    const statistics = {
+      topics: [] as any[],
+      participants: [] as any[],
+      chapters: [] as any[],
+    };
+
+    // 提取智能话题
+    if (cache.smartTopic) {
+      try {
+        statistics.topics = extractTopicInfos(cache.smartTopic);
+        console.log(
+          '[TXMeeting Background] ✅ 智能话题提取完成:',
+          statistics.topics.length
+        );
+      } catch (error) {
+        console.error('[TXMeeting Background] ❌ 智能话题提取失败:', error);
+      }
+    }
+
+    // 提取参会人员发言时长
+    if (cache.timeLine) {
+      try {
+        statistics.participants = extractParticipantSpeakingTimes(
+          cache.timeLine
+        );
+        console.log(
+          '[TXMeeting Background] ✅ 参会人员发言时长提取完成:',
+          statistics.participants.length
+        );
+      } catch (error) {
+        console.error(
+          '[TXMeeting Background] ❌ 参会人员发言时长提取失败:',
+          error
+        );
+      }
+    }
+
+    // 提取会议章节（需要会议总时长）
+    if (cache.chapter && meetingData.metadata.duration) {
+      try {
+        statistics.chapters = extractChapterInfos(
+          cache.chapter,
+          meetingData.metadata.duration
+        );
+        console.log(
+          '[TXMeeting Background] ✅ 会议章节提取完成:',
+          statistics.chapters.length
+        );
+      } catch (error) {
+        console.error('[TXMeeting Background] ❌ 会议章节提取失败:', error);
+      }
+    }
+
+    // 将统计数据添加到会议数据中
+    meetingData.statistics = statistics;
+    console.log('[TXMeeting Background] 📊 统计数据汇总:', {
+      topics: statistics.topics.length,
+      participants: statistics.participants.length,
+      chapters: statistics.chapters.length,
+    });
 
     // 使用全局上下文的缓存键（更可靠）
     const cacheKey = meetingKey;
@@ -591,6 +712,13 @@ async function handleAPIResponse(payload: {
       data: meetingData,
       timestamp: Date.now(),
     };
+
+    console.log('[TXMeeting Background] 🔍 准备保存到 storage 的 keywords:', {
+      keywords: meetingData.keywords,
+      type: typeof meetingData.keywords,
+      isArray: Array.isArray(meetingData.keywords),
+      length: meetingData.keywords?.length,
+    });
 
     // 保存到storage
     await chrome.storage.local.set({
@@ -758,6 +886,50 @@ function extractMeetingIdsFromResponseBody(
 }
 
 /**
+ * 从API请求体中提取会议标识
+ * 用于处理统计类API（get-smart-topic, get-time-line, get-chapter）
+ * 这些API的会议ID在POST请求体中而不在URL参数中
+ */
+function extractMeetingIdsFromRequestBody(
+  apiType: string,
+  requestBody: any
+): {
+  meetingId?: string;
+  recordingId?: string;
+} {
+  try {
+    // 统计类API（get-smart-topic, get-time-line, get-chapter）
+    // 请求体格式: { meeting_id: '...', record_id: '...', ... }
+    if (
+      apiType === 'get-smart-topic' ||
+      apiType === 'get-time-line' ||
+      apiType === 'get-chapter'
+    ) {
+      const meetingId = requestBody?.meeting_id;
+      const recordingId = requestBody?.record_id;
+
+      if (meetingId || recordingId) {
+        console.log(`[TXMeeting Background] 📝 从 ${apiType} 请求体提取:`, {
+          meetingId,
+          recordingId,
+        });
+      }
+
+      return {
+        meetingId,
+        recordingId,
+      };
+    }
+
+    // 其他需要从请求体提取ID的API可以在这里扩展
+    return {};
+  } catch (error) {
+    console.error('[TXMeeting Background] 从请求体提取ID失败:', error);
+    return {};
+  }
+}
+
+/**
  * 获取会议数据
  */
 async function getMeetingData(
@@ -795,6 +967,12 @@ async function getMeetingData(
     }
 
     const cachedData = cachedMeetings[meetingKey];
+    console.log('[TXMeeting Background] 🔍 从 storage 读取的 keywords:', {
+      keywords: cachedData.data.keywords,
+      type: typeof cachedData.data.keywords,
+      isArray: Array.isArray(cachedData.data.keywords),
+      length: cachedData.data.keywords?.length,
+    });
     return {
       success: true,
       data: cachedData.data,

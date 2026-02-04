@@ -203,6 +203,16 @@ export interface TimelineEvent {
 }
 
 /**
+ * 参会人员发言时长（来自 get-time-line API）
+ */
+export interface ParticipantTimeline {
+  user_id: string; // 用户 ID
+  user_name: string; // 用户姓名
+  avatar_url?: string; // 头像 URL
+  total_time: string; // 发言总时长（毫秒字符串）
+}
+
+/**
  * 主题纪要数据 (summary_type=8)
  * 来自 get-mul-summary-and-todo API
  */
@@ -390,6 +400,54 @@ export interface RecordingFile {
   quality?: string; // 质量：hd/sd
 }
 
+// ==================== UI 展示类型 ====================
+
+/**
+ * 智能话题（用于 UI 展示）
+ */
+export interface TopicInfo {
+  id: string; // 话题 ID
+  name: string; // 话题名称
+  duration: number; // 时长（毫秒）
+  percentage: number; // 占比（0-100）
+  startTime: number; // 开始时间（毫秒）
+  endTime: number; // 结束时间（毫秒）
+}
+
+/**
+ * 参会人员发言统计（用于 UI 展示）
+ */
+export interface ParticipantSpeakingTime {
+  id: string; // 用户 ID
+  name: string; // 用户姓名
+  avatarUrl?: string; // 头像 URL
+  totalTime: number; // 发言总时长（毫秒）
+  percentage: number; // 占比（0-100）
+}
+
+/**
+ * 会议章节信息（用于 UI 展示，增强版）
+ */
+export interface ChapterInfo {
+  id: string; // 章节 ID
+  title: string; // 章节标题
+  duration: number; // 时长（毫秒，计算得出）
+  percentage: number; // 占比（0-100，计算得出）
+  startTime: number; // 开始时间（毫秒）
+  endTime: number; // 结束时间（毫秒，计算得出）
+  coverUrl?: string; // 封面图 URL
+  summary?: string; // 章节摘要
+}
+
+/**
+ * 会议统计数据（汇总三类数据）
+ */
+export interface MeetingStatistics {
+  topics: TopicInfo[]; // 智能话题列表
+  participants: ParticipantSpeakingTime[]; // 参会人员发言统计
+  chapters: ChapterInfo[]; // 会议章节列表
+}
+
 // 完整会议数据（扩展版）
 export interface MeetingData {
   metadata: MeetingMetadata;
@@ -428,6 +486,9 @@ export interface MeetingData {
   qw_summary_data?: TopicSummaryData; // QW 纪要（复用结构）
   yuanbao_summary_data?: TopicSummaryData; // 元宝纪要（复用结构）
 
+  // 新增字段（UI 展示用统计数据）
+  statistics?: MeetingStatistics; // 会议统计数据（智能话题、参会人员发言、章节）
+
   captured_at: number; // 数据捕获时间戳
 }
 
@@ -458,8 +519,8 @@ export interface MinutesDetailResponse {
   minutes?: {
     lang: string;
     paragraphs: TranscriptParagraph[];
-    keywords?: Array<{ keyword: string }>;
-    ori_keywords?: Array<{ keyword: string }>;
+    keywords?: string[]; // 关键词数组：["智能体平台", "特殊教育大模型", ...]
+    ori_keywords?: string[]; // 原始关键词数组
     chapters?: Array<{
       chapter_id: string;
       title: string;
@@ -551,7 +612,8 @@ export interface GetTimeLineResponse {
   err_detail?: string;
   msg?: string;
   data?: {
-    timeline_list?: TimelineEvent[];
+    timelines?: ParticipantTimeline[]; // 参会人员发言时长列表
+    timeline_list?: TimelineEvent[]; // 时间轴事件列表（旧格式，保留兼容性）
     timeline_status?: number;
   };
   nonce?: string;

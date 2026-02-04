@@ -2,7 +2,7 @@
  * TranscriptView 组件 - 转写视图
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useMeetingData } from '../../contexts/MeetingDataContext';
 import { useUIState } from '../../contexts/UIStateContext';
 import { formatTime, highlightText } from '../../utils/format';
@@ -10,7 +10,42 @@ import styles from './TranscriptView.module.css';
 
 export function TranscriptView() {
   const { meetingData, isLoading } = useMeetingData();
-  const { searchQuery, highlightedTranscriptIndex } = useUIState();
+  const {
+    searchQuery,
+    highlightedTranscriptIndex,
+    setSearchQuery,
+    setHighlightedTranscriptIndex,
+  } = useUIState();
+
+  console.log('[TranscriptView] 渲染 - keywords:', {
+    keywords: meetingData?.keywords,
+    type: typeof meetingData?.keywords,
+    isArray: Array.isArray(meetingData?.keywords),
+    length: meetingData?.keywords?.length,
+  });
+
+  // 处理关键词点击搜索
+  const handleKeywordClick = useCallback(
+    (keyword: string) => {
+      setSearchQuery(keyword);
+
+      // 自动跳转到第一个匹配的结果
+      if (meetingData?.transcript) {
+        const firstMatchIndex = meetingData.transcript.findIndex((item) =>
+          item.text.toLowerCase().includes(keyword.toLowerCase())
+        );
+        if (firstMatchIndex !== -1) {
+          setHighlightedTranscriptIndex(firstMatchIndex);
+        }
+      }
+    },
+    [meetingData?.transcript, setSearchQuery, setHighlightedTranscriptIndex]
+  );
+
+  // 清除搜索
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+  }, [setSearchQuery]);
 
   // 搜索过滤
   const filteredTranscript = useMemo(() => {
@@ -68,10 +103,32 @@ export function TranscriptView() {
       {/* 关键词展示 */}
       {meetingData.keywords && meetingData.keywords.length > 0 && (
         <div className={styles.keywords}>
-          <h3 className={styles.keywordsTitle}>关键词</h3>
+          <div className={styles.keywordsHeader}>
+            <h3 className={styles.keywordsTitle}>关键词</h3>
+            {searchQuery && (
+              <button
+                className={styles.clearSearchBtn}
+                onClick={handleClearSearch}
+              >
+                清除搜索 "{searchQuery}"
+              </button>
+            )}
+          </div>
           <div className={styles.keywordTags}>
             {meetingData.keywords.map((keyword, i) => (
-              <span key={i} className={styles.keywordTag}>
+              <span
+                key={i}
+                className={`${styles.keywordTag} ${searchQuery === keyword ? styles.active : ''}`}
+                onClick={() => handleKeywordClick(keyword)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleKeywordClick(keyword);
+                  }
+                }}
+              >
                 {keyword}
               </span>
             ))}

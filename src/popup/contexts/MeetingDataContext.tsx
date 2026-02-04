@@ -56,6 +56,7 @@ export function MeetingDataProvider({
           '[MeetingDataContext] - todo_list:',
           response.data.todo_list
         );
+        console.log('[MeetingDataContext] - keywords:', response.data.keywords);
         setMeetingData(response.data);
         setError(null);
       } else {

@@ -1,186 +1,302 @@
+/**
+ * ChaptersView 组件样式 - 会议统计视图
+ */
+
+/* ==================== 主容器 ==================== */
 .chaptersView {
   height: 100%;
   display: flex;
   flex-direction: column;
+  padding: var(--spacing-md);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border-secondary);
+  border-bottom: 2px solid var(--color-border-secondary);
 }
 
 .title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
   color: var(--color-text-primary);
   margin: 0;
 }
 
-.stats {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+/* ==================== 快速导航 ==================== */
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-container);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
 }
 
-.chapterList {
+.navLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.navButtons {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.navButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  background-color: #ffffff;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.navButton:hover {
+  border-color: var(--color-primary);
+  background-color: #f0f7ff;
+  color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navButton:active {
+  transform: translateY(0);
+}
+
+.navButton:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.navIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.navText {
+  line-height: 1;
+}
+
+/* ==================== 内容容器 ==================== */
+.contentContainer {
   flex: 1;
   overflow-y: auto;
+  padding-right: var(--spacing-xs);
 }
 
-.chapterCard {
+/* 滚动条样式优化 */
+.contentContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.contentContainer::-webkit-scrollbar-track {
+  background: var(--color-bg-layout);
+  border-radius: var(--radius-sm);
+}
+
+.contentContainer::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.contentContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ==================== 统计区块 ==================== */
+.section {
   background-color: var(--color-bg-container);
   border: 1px solid var(--color-border-secondary);
   border-radius: var(--radius-lg);
   margin-bottom: var(--spacing-lg);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  scroll-margin-top: 16px; /* 滚动时留出间距 */
+}
+
+.section:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.sectionIcon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sectionContent {
+  padding: var(--spacing-lg);
+  background-color: white;
+}
+
+/* ==================== 图表容器 ==================== */
+.chartContainer {
+  width: 100%;
+}
+
+.chartNote {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-md);
+  font-style: italic;
+}
+
+/* ==================== 自定义工具提示 ==================== */
+.chartTooltip {
+  background-color: white;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 300px;
+}
+
+.tooltipHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.tooltipAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-base);
+}
+
+.tooltipValue {
+  color: var(--color-text-secondary);
+  margin: 4px 0;
+  font-size: var(--font-size-sm);
+}
+
+.tooltipPercentage {
+  color: var(--color-primary);
+  margin: 4px 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.tooltipTime {
+  color: var(--color-text-secondary);
+  margin: 4px 0;
+  font-size: var(--font-size-sm);
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* ==================== 章节列表 ==================== */
+.chaptersList {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.chapterItem {
+  padding: var(--spacing-md);
+  background-color: #f9fafb;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
   transition: all var(--transition-base);
 }
 
-.chapterCard.active {
+.chapterItem:hover {
+  background-color: #f3f4f6;
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .chapterHeader {
-  padding: var(--spacing-md) var(--spacing-lg);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  background-color: var(--color-bg-container);
-}
-
-.chapterHeader:hover {
-  background-color: var(--color-bg-hover);
-}
-
-.chapterTitleRow {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
 }
 
 .chapterNumber {
   display: inline-block;
-  padding: 4px 8px;
+  padding: 2px 8px;
   background-color: var(--color-primary-bg);
   color: var(--color-primary);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 
 .chapterTitle {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: 500;
   color: var(--color-text-primary);
-  margin: 0;
   flex: 1;
 }
 
 .chapterMeta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-sm);
 }
 
-.timeRange {
-  font-size: var(--font-size-sm);
+.chapterDuration {
   color: var(--color-text-secondary);
-  font-family: 'Monaco', 'Courier New', monospace;
 }
 
-.expandButton {
-  padding: 4px 8px;
-  border: none;
-  background-color: transparent;
+.chapterPercentage {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ==================== 空状态提示 ==================== */
+.emptyHint {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: all var(--transition-base);
+  margin-top: var(--spacing-xs);
 }
 
-.expandButton:hover {
-  color: var(--color-primary);
-}
-
-.chapterSummary {
-  padding: var(--spacing-md) var(--spacing-lg);
-  background-color: #f6ffed;
-  border-top: 1px solid var(--color-border-secondary);
-}
-
-.summaryLabel {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-success);
-  margin-bottom: var(--spacing-xs);
-}
-
-.chapterSummary p {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-base);
-  color: var(--color-text-primary);
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.chapterTranscript {
-  padding: var(--spacing-md) var(--spacing-lg);
-  background-color: #fafafa;
-  border-top: 1px solid var(--color-border-secondary);
-}
-
-.transcriptLabel {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-primary);
-  margin-bottom: var(--spacing-md);
-}
-
-.transcriptList {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.transcriptItem {
-  padding: var(--spacing-sm) var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
-  background-color: var(--color-bg-container);
-  border: 1px solid var(--color-border-secondary);
-  border-radius: var(--radius-sm);
-}
-
-.transcriptHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xs);
-}
-
-.transcriptTime {
-  font-size: 12px;
-  color: var(--color-primary);
-  font-family: 'Monaco', 'Courier New', monospace;
-}
-
-.transcriptSpeaker {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.transcriptText {
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
-  color: var(--color-text-primary);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* 状态组件 */
+/* ==================== 加载和空状态 ==================== */
 .loadingState,
 .emptyState {
   display: flex;
@@ -195,6 +311,7 @@
 .emptyState p {
   margin-top: var(--spacing-md);
   color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
 }
 
 .spinner {
@@ -209,5 +326,29 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ==================== 响应式设计 ==================== */
+@media (max-width: 768px) {
+  .chaptersView {
+    padding: var(--spacing-sm);
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .sectionTitle {
+    font-size: 1rem;
+  }
+
+  .navigation {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .navButtons {
+    width: 100%;
   }
 }
