@@ -357,11 +357,91 @@ async function handleAPIResponse(payload: {
       }
 
       // 根据 summary_type 存储到对应的字段
-      if (summaryType === 8) {
+      if (summaryType === 0) {
+        // summary_type=0: 返回全部数据，需要分别存储到三个位置
+        console.log(
+          '[TXMeeting Background] 📦 summary_type=0 检测到，返回全部纪要数据'
+        );
+        console.log(
+          '  📊 响应数据的所有键名:',
+          Object.keys(response.data || {})
+        );
+        console.log('  📊 响应中包含的数据字段:');
+        console.log('    - topic_summary:', !!response.data?.topic_summary);
+        console.log('    - chapter_summary:', !!response.data?.chapter_summary);
+        console.log('    - speaker_summary:', !!response.data?.speaker_summary);
+        console.log('    - todo:', !!response.data?.todo);
+        console.log(
+          '    - deepseek_summary:',
+          !!response.data?.deepseek_summary
+        );
+        console.log(
+          '    - template_summary:',
+          !!response.data?.template_summary
+        );
+        console.log(
+          '    - summary_preferences:',
+          !!response.data?.summary_preferences
+        );
+        console.log('    - dsv3_summary:', !!response.data?.dsv3_summary);
+        console.log('    - qw_summary:', !!response.data?.qw_summary);
+        console.log('    - yuanbao_summary:', !!response.data?.yuanbao_summary);
+
+        // 存储主题纪要及所有AI模型纪要（如果存在）
+        if (
+          response.data?.topic_summary ||
+          response.data?.deepseek_summary ||
+          response.data?.template_summary ||
+          response.data?.summary_preferences ||
+          response.data?.dsv3_summary ||
+          response.data?.qw_summary ||
+          response.data?.yuanbao_summary
+        ) {
+          cache.mulSummaryAndTodo.topicSummary = response;
+          console.log('  ✅ 已存储主题纪要及AI模型纪要 (topicSummary slot)');
+        }
+
+        // 存储分章节纪要（如果存在）
+        if (response.data?.chapter_summary) {
+          cache.mulSummaryAndTodo.chapterSummary = response;
+          console.log('  ✅ 已存储分章节纪要 (chapterSummary slot)');
+        }
+
+        // 存储发言人观点和待办（如果存在）
+        if (response.data?.speaker_summary || response.data?.todo) {
+          cache.mulSummaryAndTodo.speakerSummary = response;
+          console.log('  ✅ 已存储发言人观点+待办 (speakerSummary slot)');
+        }
+
+        console.log(
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (全部纪要, summary_type=0)'
+        );
+      } else if (summaryType === 8) {
         cache.mulSummaryAndTodo.topicSummary = response;
         console.log(
-          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (主题纪要, summary_type=8)'
+          '[TXMeeting Background] ✅ 已存储 get-mul-summary-and-todo 响应 (主题纪要+AI模型, summary_type=8)'
         );
+        console.log(
+          '  📊 响应数据的所有键名:',
+          Object.keys(response.data || {})
+        );
+        console.log('  📊 AI模型纪要字段状态:');
+        console.log('    - topic_summary:', !!response.data?.topic_summary);
+        console.log(
+          '    - deepseek_summary:',
+          !!response.data?.deepseek_summary
+        );
+        console.log(
+          '    - template_summary:',
+          !!response.data?.template_summary
+        );
+        console.log(
+          '    - summary_preferences:',
+          !!response.data?.summary_preferences
+        );
+        console.log('    - dsv3_summary:', !!response.data?.dsv3_summary);
+        console.log('    - qw_summary:', !!response.data?.qw_summary);
+        console.log('    - yuanbao_summary:', !!response.data?.yuanbao_summary);
       } else if (summaryType === 1) {
         cache.mulSummaryAndTodo.chapterSummary = response;
         console.log(
@@ -392,11 +472,13 @@ async function handleAPIResponse(payload: {
         if (response.data?.topic_summary) {
           console.warn('  → 检测到 topic_summary，存储为主题纪要');
           cache.mulSummaryAndTodo.topicSummary = response;
-        } else if (response.data?.chapter_summary) {
+        }
+        if (response.data?.chapter_summary) {
           console.warn('  → 检测到 chapter_summary，存储为分章节纪要');
           cache.mulSummaryAndTodo.chapterSummary = response;
-        } else if (response.data?.speaker_summary) {
-          console.warn('  → 检测到 speaker_summary，存储为发言人观点');
+        }
+        if (response.data?.speaker_summary || response.data?.todo) {
+          console.warn('  → 检测到 speaker_summary/todo，存储为发言人观点');
           cache.mulSummaryAndTodo.speakerSummary = response;
         }
       }

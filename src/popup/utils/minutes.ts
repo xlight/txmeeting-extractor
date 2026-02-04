@@ -5,6 +5,27 @@
 import type { MeetingData } from '../../types/meeting';
 
 /**
+ * Strip HTML tags and convert to plain text
+ * Used for custom_summary fields that contain HTML
+ */
+function stripHtml(html: string): string {
+  if (!html || !html.trim()) return '';
+
+  return html
+    .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newlines
+    .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newlines
+    .replace(/<li>/gi, '- ') // Convert <li> to bullet points
+    .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+    .replace(/&nbsp;/g, ' ') // Replace &nbsp;
+    .replace(/&lt;/g, '<') // Decode entities
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+/**
  * 格式化时间（毫秒 -> HH:MM:SS 或 MM:SS）
  */
 function formatTime(ms: number): string {
@@ -95,6 +116,14 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
     meetingData.topic_summary_data.summary_status === 2
   ) {
     minutes += `## 主题纪要\n\n`;
+
+    // 自定义纪要（优先显示）
+    if (meetingData.topic_summary_data.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.topic_summary_data.custom_summary) + '\n\n';
+    }
+
     if (meetingData.topic_summary_data.begin_summary) {
       minutes += `### 开场总结\n\n${meetingData.topic_summary_data.begin_summary}\n\n`;
     }
@@ -103,12 +132,231 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
       meetingData.topic_summary_data.sub_points.length > 0
     ) {
       minutes += `### 核心要点\n\n`;
-      meetingData.topic_summary_data.sub_points.forEach((point, index) => {
-        minutes += `#### ${index + 1}. ${point.title}\n\n${point.content}\n\n`;
-      });
+      meetingData.topic_summary_data.sub_points
+        .filter(
+          (point) => point.sub_point_title || point.sub_point_vec_items?.length
+        )
+        .forEach((point, index) => {
+          minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+          if (point.sub_point_vec_items?.length > 0) {
+            point.sub_point_vec_items.forEach((item) => {
+              minutes += `- ${item.point}\n`;
+            });
+            minutes += `\n`;
+          }
+        });
     }
     if (meetingData.topic_summary_data.end_summary) {
       minutes += `### 结束总结\n\n${meetingData.topic_summary_data.end_summary}\n\n`;
+    }
+  }
+
+  // DeepSeek 纪要（优先级最高）
+  if (
+    meetingData.deepseek_summary_data &&
+    meetingData.deepseek_summary_data.summary_status === 2
+  ) {
+    minutes += `## 🤖 DeepSeek 智能纪要\n\n`;
+
+    if (meetingData.deepseek_summary_data.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.deepseek_summary_data.custom_summary) + '\n\n';
+    }
+
+    if (meetingData.deepseek_summary_data.begin_summary) {
+      minutes += `### 开场总结\n\n${meetingData.deepseek_summary_data.begin_summary}\n\n`;
+    }
+
+    if (meetingData.deepseek_summary_data.sub_points?.length > 0) {
+      minutes += `### 核心要点\n\n`;
+      meetingData.deepseek_summary_data.sub_points.forEach((point, index) => {
+        minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            minutes += `- ${item.point}\n`;
+          });
+          minutes += `\n`;
+        }
+      });
+    }
+
+    if (meetingData.deepseek_summary_data.end_summary) {
+      minutes += `### 结束总结\n\n${meetingData.deepseek_summary_data.end_summary}\n\n`;
+    }
+  }
+
+  // 模板纪要
+  if (
+    meetingData.template_summary_data &&
+    meetingData.template_summary_data.summary_status === 2
+  ) {
+    minutes += `## 📝 模板纪要\n\n`;
+
+    if (meetingData.template_summary_data.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.template_summary_data.custom_summary) + '\n\n';
+    }
+
+    if (meetingData.template_summary_data.begin_summary) {
+      minutes += `### 开场总结\n\n${meetingData.template_summary_data.begin_summary}\n\n`;
+    }
+
+    if (meetingData.template_summary_data.sub_points?.length > 0) {
+      minutes += `### 核心要点\n\n`;
+      meetingData.template_summary_data.sub_points.forEach((point, index) => {
+        minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            minutes += `- ${item.point}\n`;
+          });
+          minutes += `\n`;
+        }
+      });
+    }
+
+    if (meetingData.template_summary_data.end_summary) {
+      minutes += `### 结束总结\n\n${meetingData.template_summary_data.end_summary}\n\n`;
+    }
+  }
+
+  // 纪要偏好设置（混元）
+  if (
+    meetingData.summary_preferences &&
+    meetingData.summary_preferences.summary_status === 2
+  ) {
+    minutes += `## ⚙️ 纪要偏好设置\n\n`;
+
+    if (meetingData.summary_preferences.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.summary_preferences.custom_summary) + '\n\n';
+    }
+
+    if (meetingData.summary_preferences.begin_summary) {
+      minutes += `### 开场总结\n\n${meetingData.summary_preferences.begin_summary}\n\n`;
+    }
+
+    if (meetingData.summary_preferences.sub_points?.length > 0) {
+      minutes += `### 核心要点\n\n`;
+      meetingData.summary_preferences.sub_points.forEach((point, index) => {
+        minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            minutes += `- ${item.point}\n`;
+          });
+          minutes += `\n`;
+        }
+      });
+    }
+
+    if (meetingData.summary_preferences.end_summary) {
+      minutes += `### 结束总结\n\n${meetingData.summary_preferences.end_summary}\n\n`;
+    }
+  }
+
+  // DSV3 纪要
+  if (
+    meetingData.dsv3_summary_data &&
+    meetingData.dsv3_summary_data.summary_status === 2
+  ) {
+    minutes += `## 💡 DSV3 智能纪要\n\n`;
+
+    if (meetingData.dsv3_summary_data.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.dsv3_summary_data.custom_summary) + '\n\n';
+    }
+
+    if (meetingData.dsv3_summary_data.begin_summary) {
+      minutes += `### 开场总结\n\n${meetingData.dsv3_summary_data.begin_summary}\n\n`;
+    }
+
+    if (meetingData.dsv3_summary_data.sub_points?.length > 0) {
+      minutes += `### 核心要点\n\n`;
+      meetingData.dsv3_summary_data.sub_points.forEach((point, index) => {
+        minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            minutes += `- ${item.point}\n`;
+          });
+          minutes += `\n`;
+        }
+      });
+    }
+
+    if (meetingData.dsv3_summary_data.end_summary) {
+      minutes += `### 结束总结\n\n${meetingData.dsv3_summary_data.end_summary}\n\n`;
+    }
+  }
+
+  // QW 纪要
+  if (
+    meetingData.qw_summary_data &&
+    meetingData.qw_summary_data.summary_status === 2
+  ) {
+    minutes += `## 🔮 QW 智能纪要\n\n`;
+
+    if (meetingData.qw_summary_data.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes += stripHtml(meetingData.qw_summary_data.custom_summary) + '\n\n';
+    }
+
+    if (meetingData.qw_summary_data.begin_summary) {
+      minutes += `### 开场总结\n\n${meetingData.qw_summary_data.begin_summary}\n\n`;
+    }
+
+    if (meetingData.qw_summary_data.sub_points?.length > 0) {
+      minutes += `### 核心要点\n\n`;
+      meetingData.qw_summary_data.sub_points.forEach((point, index) => {
+        minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            minutes += `- ${item.point}\n`;
+          });
+          minutes += `\n`;
+        }
+      });
+    }
+
+    if (meetingData.qw_summary_data.end_summary) {
+      minutes += `### 结束总结\n\n${meetingData.qw_summary_data.end_summary}\n\n`;
+    }
+  }
+
+  // 元宝纪要
+  if (
+    meetingData.yuanbao_summary_data &&
+    meetingData.yuanbao_summary_data.summary_status === 2
+  ) {
+    minutes += `## 💰 元宝智能纪要\n\n`;
+
+    if (meetingData.yuanbao_summary_data.custom_summary) {
+      minutes += `### 自定义纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.yuanbao_summary_data.custom_summary) + '\n\n';
+    }
+
+    if (meetingData.yuanbao_summary_data.begin_summary) {
+      minutes += `### 开场总结\n\n${meetingData.yuanbao_summary_data.begin_summary}\n\n`;
+    }
+
+    if (meetingData.yuanbao_summary_data.sub_points?.length > 0) {
+      minutes += `### 核心要点\n\n`;
+      meetingData.yuanbao_summary_data.sub_points.forEach((point, index) => {
+        minutes += `#### ${index + 1}. ${point.sub_point_title || '无标题'}\n\n`;
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            minutes += `- ${item.point}\n`;
+          });
+          minutes += `\n`;
+        }
+      });
+    }
+
+    if (meetingData.yuanbao_summary_data.end_summary) {
+      minutes += `### 结束总结\n\n${meetingData.yuanbao_summary_data.end_summary}\n\n`;
     }
   }
 
@@ -119,12 +367,17 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
     meetingData.chapter_summary_data.summary_list.length > 0
   ) {
     minutes += `## 分章节纪要\n\n`;
+
+    // 自定义纪要（优先显示）
+    if (meetingData.chapter_summary_data.custom_summary) {
+      minutes += `### 自定义章节纪要\n\n`;
+      minutes +=
+        stripHtml(meetingData.chapter_summary_data.custom_summary) + '\n\n';
+    }
+
     meetingData.chapter_summary_data.summary_list.forEach((chapter, index) => {
-      minutes += `### 第 ${index + 1} 章: ${chapter.chapter_title}\n\n`;
-      if (chapter.start_time !== undefined && chapter.end_time !== undefined) {
-        minutes += `**时间**: ${formatTime(chapter.start_time)} - ${formatTime(chapter.end_time)}\n\n`;
-      }
-      minutes += `${chapter.summary}\n\n`;
+      minutes += `### 第 ${index + 1} 章: ${chapter.title || '无标题'}\n\n`;
+      minutes += `${chapter.summary || '无内容'}\n\n`;
     });
   }
 
@@ -136,16 +389,16 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
   ) {
     minutes += `## 发言人观点\n\n`;
     meetingData.speaker_summary_data.speakers_opinions.forEach((speaker) => {
-      minutes += `### 👤 ${speaker.speaker_id}\n\n`;
+      minutes += `### 👤 ${speaker.speaker_id || '未知发言人'}\n\n`;
       if (speaker.sub_points && speaker.sub_points.length > 0) {
         speaker.sub_points.forEach((subPoint) => {
-          minutes += `#### ${subPoint.sub_point_title}\n\n`;
+          minutes += `#### ${subPoint.sub_point_title || '无标题'}\n\n`;
           if (
             subPoint.sub_point_vec_items &&
             subPoint.sub_point_vec_items.length > 0
           ) {
             subPoint.sub_point_vec_items.forEach((item) => {
-              minutes += `- ${item.point}\n`;
+              minutes += `- ${item.point || '无内容'}\n`;
             });
             minutes += `\n`;
           }
@@ -177,7 +430,7 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
   if (meetingData.todo_items && meetingData.todo_items.length > 0) {
     minutes += `## 待办事项\n\n`;
     meetingData.todo_items.forEach((todo, index) => {
-      minutes += `### ${index + 1}. ${todo.todo_name}\n\n`;
+      minutes += `### ${index + 1}. ${todo.todo_name || '无标题'}\n\n`;
       if (todo.todo_time) {
         minutes += `**时间**: ${todo.todo_time}\n\n`;
       }

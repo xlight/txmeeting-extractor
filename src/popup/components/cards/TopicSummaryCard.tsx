@@ -41,28 +41,55 @@ export const TopicSummaryCard = React.memo<TopicSummaryCardProps>(
         </div>
 
         <div className={styles.cardContent}>
+          {/* 自定义纪要 */}
+          {data.custom_summary && data.custom_summary.trim() ? (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>自定义纪要</h3>
+              <div
+                className={styles.htmlContent}
+                dangerouslySetInnerHTML={{ __html: data.custom_summary }}
+              />
+            </div>
+          ) : null}
+
           {/* 开场总结 */}
-          {data.begin_summary && (
+          {data.begin_summary && data.begin_summary.trim() ? (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>开场总结</h3>
               <p className={styles.sectionText}>{data.begin_summary}</p>
             </div>
-          )}
+          ) : null}
 
           {/* 核心要点 */}
           {data.sub_points && data.sub_points.length > 0 ? (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>核心要点</h3>
               <div className={styles.pointsList}>
-                {data.sub_points.map((point, index) => (
-                  <div key={index} className={styles.pointItem}>
-                    <div className={styles.pointHeader}>
-                      <span className={styles.pointNumber}>{index + 1}</span>
-                      <h4 className={styles.pointTitle}>{point.title}</h4>
+                {data.sub_points
+                  .filter(
+                    (point) =>
+                      point.sub_point_title || point.sub_point_vec_items?.length
+                  )
+                  .map((point, index) => (
+                    <div key={index} className={styles.pointItem}>
+                      <div className={styles.pointHeader}>
+                        <span className={styles.pointNumber}>{index + 1}</span>
+                        <h4 className={styles.pointTitle}>
+                          {point.sub_point_title || '无标题'}
+                        </h4>
+                      </div>
+                      {point.sub_point_vec_items &&
+                      point.sub_point_vec_items.length > 0 ? (
+                        <ul className={styles.pointContent}>
+                          {point.sub_point_vec_items.map((item, itemIndex) => (
+                            <li key={itemIndex}>{item.point}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className={styles.pointContent}>无内容</p>
+                      )}
                     </div>
-                    <p className={styles.pointContent}>{point.content}</p>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           ) : (
@@ -72,12 +99,12 @@ export const TopicSummaryCard = React.memo<TopicSummaryCardProps>(
           )}
 
           {/* 结束总结 */}
-          {data.end_summary && (
+          {data.end_summary && data.end_summary.trim() ? (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>结束总结</h3>
               <p className={styles.sectionText}>{data.end_summary}</p>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     );

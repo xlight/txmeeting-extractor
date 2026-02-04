@@ -65,6 +65,20 @@ export function TranscriptView() {
         </div>
       </div>
 
+      {/* 关键词展示 */}
+      {meetingData.keywords && meetingData.keywords.length > 0 && (
+        <div className={styles.keywords}>
+          <h3 className={styles.keywordsTitle}>关键词</h3>
+          <div className={styles.keywordTags}>
+            {meetingData.keywords.map((keyword, i) => (
+              <span key={i} className={styles.keywordTag}>
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={styles.list}>
         {filteredTranscript.map((item, index) => {
           const isHighlighted = highlightedTranscriptIndex === index;

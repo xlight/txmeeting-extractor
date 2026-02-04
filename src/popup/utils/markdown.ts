@@ -9,7 +9,6 @@ import {
   SpeakerSummaryData,
   TodoItemData,
 } from '../../types/meeting';
-import { formatTime } from './format';
 
 /**
  * 将主题纪要转换为 Markdown 格式
@@ -26,10 +25,19 @@ export function topicSummaryToMarkdown(data: TopicSummaryData): string {
   // 核心要点
   if (data.sub_points && data.sub_points.length > 0) {
     lines.push('## 核心要点\n');
-    data.sub_points.forEach((point, index) => {
-      lines.push(`### ${index + 1}. ${point.title}\n`);
-      lines.push(point.content + '\n');
-    });
+    data.sub_points
+      .filter(
+        (point) => point.sub_point_title || point.sub_point_vec_items?.length
+      )
+      .forEach((point, index) => {
+        lines.push(`### ${index + 1}. ${point.sub_point_title || '无标题'}\n`);
+        if (point.sub_point_vec_items?.length > 0) {
+          point.sub_point_vec_items.forEach((item) => {
+            lines.push(`- ${item.point}`);
+          });
+          lines.push('');
+        }
+      });
   }
 
   // 结束总结
@@ -49,14 +57,7 @@ export function chapterSummaryToMarkdown(data: ChapterSummaryData): string {
 
   if (data.summary_list && data.summary_list.length > 0) {
     data.summary_list.forEach((chapter, index) => {
-      lines.push(`## 第 ${index + 1} 章: ${chapter.chapter_title}\n`);
-
-      // 时间范围
-      if (chapter.start_time !== undefined && chapter.end_time !== undefined) {
-        const startTime = formatTime(chapter.start_time);
-        const endTime = formatTime(chapter.end_time);
-        lines.push(`**时间**: ${startTime} - ${endTime}\n`);
-      }
+      lines.push(`## 第 ${index + 1} 章: ${chapter.title}\n`);
 
       // 章节纪要
       lines.push(chapter.summary + '\n');

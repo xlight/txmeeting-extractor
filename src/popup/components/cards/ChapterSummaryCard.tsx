@@ -5,7 +5,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { ChapterSummaryData } from '../../../types/meeting';
 import { chapterSummaryToMarkdown } from '../../utils/markdown';
-import { formatTime } from '../../utils/format';
 import styles from './Card.module.css';
 
 interface ChapterSummaryCardProps {
@@ -42,28 +41,27 @@ export const ChapterSummaryCard = React.memo<ChapterSummaryCardProps>(
         </div>
 
         <div className={styles.cardContent}>
+          {/* 自定义章节纪要 */}
+          {data.custom_summary && data.custom_summary.trim() ? (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>自定义章节纪要</h3>
+              <div
+                className={styles.htmlContent}
+                dangerouslySetInnerHTML={{ __html: data.custom_summary }}
+              />
+            </div>
+          ) : null}
+
           {data.summary_list && data.summary_list.length > 0 ? (
             <div className={styles.chaptersList}>
               {data.summary_list.map((chapter, index) => (
-                <div key={chapter.chapter_id} className={styles.chapterItem}>
+                <div key={chapter.summary_id} className={styles.chapterItem}>
                   <div className={styles.chapterHeader}>
                     <span className={styles.chapterNumber}>{index + 1}</span>
                     <h3 className={styles.chapterTitle}>
-                      {chapter.chapter_title || `章节 ${index + 1}`}
+                      {chapter.title || `章节 ${index + 1}`}
                     </h3>
                   </div>
-
-                  {/* 时间范围 */}
-                  {chapter.start_time !== undefined &&
-                    chapter.end_time !== undefined && (
-                      <div className={styles.chapterTime}>
-                        <span className={styles.timeIcon}>🕒</span>
-                        <span className={styles.timeRange}>
-                          {formatTime(chapter.start_time)} -{' '}
-                          {formatTime(chapter.end_time)}
-                        </span>
-                      </div>
-                    )}
 
                   {/* 章节纪要 */}
                   <p className={styles.chapterSummary}>{chapter.summary}</p>

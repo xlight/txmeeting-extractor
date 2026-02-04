@@ -555,6 +555,14 @@ export function extractFromMulSummaryAndTodo(responses: {
     hasSpeakerSummary: !!responses.speakerSummary,
   });
 
+  // 输出 topicSummary 的详细结构
+  if (responses.topicSummary?.data) {
+    console.log(
+      '[Extractor] 🔍 topicSummary.data 包含的字段:',
+      Object.keys(responses.topicSummary.data)
+    );
+  }
+
   const result: Partial<MeetingData> = {};
 
   // 提取主题纪要数据 (summary_type=8)
@@ -575,6 +583,8 @@ export function extractFromMulSummaryAndTodo(responses: {
       begin_summary: topicData.begin_summary || '',
       sub_points: topicData.sub_points || [],
       end_summary: topicData.end_summary || '',
+      custom_summary: topicData.custom_summary || '',
+      orig_custom_summary: topicData.orig_custom_summary || '',
       summary_status: topicData.summary_status || 0,
       lang: topicData.lang || '',
       model_status: topicData.model_status || 0,
@@ -605,12 +615,12 @@ export function extractFromMulSummaryAndTodo(responses: {
     result.chapter_summary_data = {
       summary_list:
         chapterData.summary_list?.map((item) => ({
-          chapter_id: item.chapter_id,
-          chapter_title: item.chapter_title || '', // 使用空字符串作为默认值
+          summary_id: item.summary_id,
+          title: item.title || '',
           summary: item.summary,
-          start_time: item.start_time,
-          end_time: item.end_time,
         })) || [],
+      custom_summary: chapterData.custom_summary || '',
+      orig_custom_summary: chapterData.orig_custom_summary || '',
       summary_status: chapterData.summary_status || 0,
       lang: chapterData.lang || '',
       model_status: chapterData.model_status || 0,
@@ -705,6 +715,188 @@ export function extractFromMulSummaryAndTodo(responses: {
       .filter(Boolean) as TodoItem[];
     console.log('[Extractor] ✅ 提取待办事项数据 (旧格式):', {
       todoCount: result.todo_list.length,
+    });
+  }
+
+  // 提取 DeepSeek 纪要数据
+  console.log('[Extractor] 🔍 检查 DeepSeek 纪要数据:', {
+    hasTopicSummary: !!responses.topicSummary,
+    hasTopicSummaryData: !!responses.topicSummary?.data,
+    hasDeepSeekSummary: !!responses.topicSummary?.data?.deepseek_summary,
+    hasDeepSeekR1Summary: !!responses.topicSummary?.data?.ds_r1_summary,
+  });
+
+  // DeepSeek 数据结构：
+  // {
+  //   deepseek_summary: {
+  //     data_type: 1,
+  //     summary_status: 2,  ← 状态在外层
+  //     topic_summary: { ... },  ← 内容在这里
+  //     lang: "default",
+  //     ...
+  //   }
+  // }
+  let deepseekWrapper = null;
+  let sourceFieldName = '';
+
+  if (responses.topicSummary?.data?.ds_r1_summary) {
+    deepseekWrapper = responses.topicSummary.data.ds_r1_summary as any;
+    sourceFieldName = 'ds_r1_summary';
+  } else if (responses.topicSummary?.data?.deepseek_summary) {
+    deepseekWrapper = responses.topicSummary.data.deepseek_summary as any;
+    sourceFieldName = 'deepseek_summary';
+  }
+
+  if (deepseekWrapper) {
+    // 内容在 topic_summary 下，状态在外层
+    const deepseekContent = deepseekWrapper.topic_summary || deepseekWrapper;
+
+    console.log(
+      `[Extractor] 🔍 原始 DeepSeek 纪要数据（来源：${sourceFieldName}）:`,
+      {
+        subPointsCount: deepseekContent.sub_points?.length || 0,
+        summaryStatusOuter: deepseekWrapper.summary_status, // 外层状态
+        summaryStatusInner: deepseekContent.summary_status, // 内层状态（可能不存在）
+        hasBeginSummary: !!deepseekContent.begin_summary,
+        hasEndSummary: !!deepseekContent.end_summary,
+        hasCustomSummary: !!deepseekWrapper.custom_summary,
+        hasOrigCustomSummary: !!deepseekWrapper.orig_custom_summary,
+      }
+    );
+
+    result.deepseek_summary_data = {
+      begin_summary: deepseekContent.begin_summary || '',
+      sub_points: (deepseekContent.sub_points || []).map((point: any) => ({
+        sub_point_title: point.sub_point_title,
+        sub_point_vec_items: point.sub_point_vec_items || [],
+      })),
+      end_summary: deepseekContent.end_summary || '',
+      custom_summary: deepseekWrapper.custom_summary || '', // 从外层获取
+      orig_custom_summary: deepseekWrapper.orig_custom_summary || '', // 从外层获取
+      summary_status: deepseekWrapper.summary_status || 0, // 从外层获取
+      lang: deepseekWrapper.lang || '',
+      model_status: deepseekWrapper.model_status || 0,
+    };
+
+    console.log('[Extractor] ✅ DeepSeek 纪要提取完成:', {
+      pointsCount: result.deepseek_summary_data.sub_points.length,
+      status: result.deepseek_summary_data.summary_status,
+      hasCustomSummary: !!result.deepseek_summary_data.custom_summary,
+    });
+  } else {
+    console.log('[Extractor] ⚠️ 未找到 DeepSeek 纪要数据');
+  }
+
+  // 提取模板纪要数据
+  if (responses.topicSummary?.data?.template_summary) {
+    const templateData = responses.topicSummary.data.template_summary;
+    console.log('[Extractor] 🔍 提取模板纪要数据');
+
+    result.template_summary_data = {
+      begin_summary: templateData.begin_summary || '',
+      sub_points: templateData.sub_points || [],
+      end_summary: templateData.end_summary || '',
+      custom_summary: templateData.custom_summary || '',
+      orig_custom_summary: templateData.orig_custom_summary || '',
+      summary_status: templateData.summary_status || 0,
+      lang: templateData.lang || '',
+      model_status: templateData.model_status || 0,
+    };
+
+    console.log('[Extractor] ✅ 模板纪要提取完成:', {
+      pointsCount: result.template_summary_data.sub_points.length,
+      status: result.template_summary_data.summary_status,
+    });
+  }
+
+  // 提取混元纪要偏好数据（字段名是 summary_preferences，不是 hunyuan）
+  if (responses.topicSummary?.data?.summary_preferences) {
+    const preferencesData = responses.topicSummary.data.summary_preferences;
+    console.log('[Extractor] 🔍 提取纪要偏好数据（混元模型）');
+
+    result.summary_preferences = {
+      begin_summary: preferencesData.begin_summary || '',
+      sub_points: (preferencesData.sub_points || []).map((point) => ({
+        sub_point_title: point.sub_point_title,
+        sub_point_vec_items: point.sub_point_vec_items || [],
+      })),
+      end_summary: preferencesData.end_summary || '',
+      custom_summary: preferencesData.custom_summary || '',
+      orig_custom_summary: preferencesData.orig_custom_summary || '',
+      summary_status: preferencesData.summary_status || 0,
+      lang: preferencesData.lang || '',
+      model_status: preferencesData.model_status || 0,
+    };
+
+    console.log('[Extractor] ✅ 纪要偏好提取完成:', {
+      pointsCount: result.summary_preferences?.sub_points.length || 0,
+      status: result.summary_preferences?.summary_status || 0,
+    });
+  }
+
+  // 提取 DSV3 纪要数据
+  if (responses.topicSummary?.data?.dsv3_summary) {
+    const dsv3Data = responses.topicSummary.data.dsv3_summary;
+    console.log('[Extractor] 🔍 提取 DSV3 纪要数据');
+
+    result.dsv3_summary_data = {
+      begin_summary: dsv3Data.begin_summary || '',
+      sub_points: dsv3Data.sub_points || [],
+      end_summary: dsv3Data.end_summary || '',
+      custom_summary: dsv3Data.custom_summary || '',
+      orig_custom_summary: dsv3Data.orig_custom_summary || '',
+      summary_status: dsv3Data.summary_status || 0,
+      lang: dsv3Data.lang || '',
+      model_status: dsv3Data.model_status || 0,
+    };
+
+    console.log('[Extractor] ✅ DSV3 纪要提取完成:', {
+      pointsCount: result.dsv3_summary_data.sub_points.length,
+      status: result.dsv3_summary_data.summary_status,
+    });
+  }
+
+  // 提取 QW 纪要数据
+  if (responses.topicSummary?.data?.qw_summary) {
+    const qwData = responses.topicSummary.data.qw_summary;
+    console.log('[Extractor] 🔍 提取 QW 纪要数据');
+
+    result.qw_summary_data = {
+      begin_summary: qwData.begin_summary || '',
+      sub_points: qwData.sub_points || [],
+      end_summary: qwData.end_summary || '',
+      custom_summary: qwData.custom_summary || '',
+      orig_custom_summary: qwData.orig_custom_summary || '',
+      summary_status: qwData.summary_status || 0,
+      lang: qwData.lang || '',
+      model_status: qwData.model_status || 0,
+    };
+
+    console.log('[Extractor] ✅ QW 纪要提取完成:', {
+      pointsCount: result.qw_summary_data.sub_points.length,
+      status: result.qw_summary_data.summary_status,
+    });
+  }
+
+  // 提取元宝纪要数据
+  if (responses.topicSummary?.data?.yuanbao_summary) {
+    const yuanbaoData = responses.topicSummary.data.yuanbao_summary;
+    console.log('[Extractor] 🔍 提取元宝纪要数据');
+
+    result.yuanbao_summary_data = {
+      begin_summary: yuanbaoData.begin_summary || '',
+      sub_points: yuanbaoData.sub_points || [],
+      end_summary: yuanbaoData.end_summary || '',
+      custom_summary: yuanbaoData.custom_summary || '',
+      orig_custom_summary: yuanbaoData.orig_custom_summary || '',
+      summary_status: yuanbaoData.summary_status || 0,
+      lang: yuanbaoData.lang || '',
+      model_status: yuanbaoData.model_status || 0,
+    };
+
+    console.log('[Extractor] ✅ 元宝纪要提取完成:', {
+      pointsCount: result.yuanbao_summary_data.sub_points.length,
+      status: result.yuanbao_summary_data.summary_status,
     });
   }
 

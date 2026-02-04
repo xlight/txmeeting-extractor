@@ -210,10 +210,15 @@ export interface TopicSummaryData {
   begin_summary: string; // 开场总结
   sub_points: Array<{
     // 要点列表
-    title: string; // 要点标题
-    content: string; // 要点内容
+    sub_point_title: string; // 要点标题
+    sub_point_vec_items: Array<{
+      point: string; // 具体内容
+      refs: any[]; // 引用（通常为空）
+    }>;
   }>;
   end_summary: string; // 结束总结
+  custom_summary: string; // 自定义纪要（HTML格式）
+  orig_custom_summary: string; // 原始自定义纪要（HTML格式）
   summary_status: number; // 状态: 0=生成中, 1=失败, 2=成功
   lang: string; // 语言
   model_status: number; // 模型状态
@@ -226,12 +231,12 @@ export interface TopicSummaryData {
 export interface ChapterSummaryData {
   summary_list: Array<{
     // 章节纪要列表
-    chapter_id: string; // 章节 ID
-    chapter_title: string; // 章节标题
+    summary_id: string; // 章节 ID
+    title: string; // 章节标题
     summary: string; // 章节纪要
-    start_time?: number; // 开始时间(毫秒)
-    end_time?: number; // 结束时间(毫秒)
   }>;
+  custom_summary: string; // 自定义纪要（HTML格式）
+  orig_custom_summary: string; // 原始自定义纪要（HTML格式）
   summary_status: number; // 状态
   lang: string;
   model_status: number;
@@ -256,6 +261,69 @@ export interface SpeakerSummaryData {
   }>;
   custom_summary: string; // 自定义纪要(HTML格式)
   orig_custom_summary: string; // 原始自定义纪要(HTML格式)
+  summary_status: number;
+  lang: string;
+  model_status: number;
+}
+
+/**
+ * DeepSeek 纪要数据
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface DeepSeekSummaryData {
+  begin_summary: string;
+  sub_points: Array<{
+    sub_point_title: string;
+    sub_point_vec_items: Array<{
+      point: string;
+      refs: any[];
+    }>;
+  }>;
+  end_summary: string;
+  custom_summary: string; // HTML格式
+  orig_custom_summary: string; // HTML格式
+  summary_status: number;
+  lang: string;
+  model_status: number;
+}
+
+/**
+ * 模板纪要数据
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface TemplateSummaryData {
+  begin_summary: string;
+  sub_points: Array<{
+    sub_point_title: string;
+    sub_point_vec_items: Array<{
+      point: string;
+      refs: any[];
+    }>;
+  }>;
+  end_summary: string;
+  custom_summary: string;
+  orig_custom_summary: string;
+  summary_status: number;
+  lang: string;
+  model_status: number;
+}
+
+/**
+ * 纪要偏好设置（混元模型）
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface SummaryPreferences {
+  begin_summary: string;
+  sub_points: Array<{
+    sub_point_title: string;
+    sub_point_vec_items: Array<{
+      point: string;
+      refs: any[];
+    }>;
+  }>;
+  end_summary: string;
+  custom_summary: string;
+  orig_custom_summary: string;
   summary_status: number;
   lang: string;
   model_status: number;
@@ -351,6 +419,14 @@ export interface MeetingData {
   chapter_summary_data?: ChapterSummaryData; // 分章节纪要
   speaker_summary_data?: SpeakerSummaryData; // 发言人观点
   todo_items?: TodoItemData[]; // 待办事项（新格式）
+
+  // 新增字段（其他AI模型纪要）
+  deepseek_summary_data?: DeepSeekSummaryData; // DeepSeek 纪要
+  template_summary_data?: TemplateSummaryData; // 模板纪要
+  summary_preferences?: SummaryPreferences; // 纪要偏好设置（混元模型）
+  dsv3_summary_data?: TopicSummaryData; // DSV3 纪要（复用结构）
+  qw_summary_data?: TopicSummaryData; // QW 纪要（复用结构）
+  yuanbao_summary_data?: TopicSummaryData; // 元宝纪要（复用结构）
 
   captured_at: number; // 数据捕获时间戳
 }
@@ -494,12 +570,12 @@ export interface GetMulSummaryAndTodoResponse {
     // 分章节纪要 (summary_type=1)
     chapter_summary?: {
       summary_list?: Array<{
-        chapter_id: string;
-        chapter_title?: string;
+        summary_id: string;
+        title?: string;
         summary: string;
-        start_time?: number;
-        end_time?: number;
       }>;
+      custom_summary?: string;
+      orig_custom_summary?: string;
       summary_status?: number;
       lang?: string;
       model_status?: number;
@@ -508,10 +584,15 @@ export interface GetMulSummaryAndTodoResponse {
     topic_summary?: {
       begin_summary?: string;
       sub_points?: Array<{
-        title: string;
-        content: string;
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
       }>;
       end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
       summary_status?: number;
       lang?: string;
       model_status?: number;
@@ -528,6 +609,142 @@ export interface GetMulSummaryAndTodoResponse {
           }>;
         }>;
       }>;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // DeepSeek 纪要
+    deepseek_summary?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // DeepSeek R1 纪要（新字段）
+    ds_r1_summary?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // 模板纪要
+    template_summary?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // 混元纪要偏好（字段名 hunyuan，也可能是 summary_preferences）
+    hunyuan?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // 纪要偏好（实际 API 返回的字段名）
+    summary_preferences?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items?: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // DSV3 纪要
+    dsv3_summary?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // QW 纪要
+    qw_summary?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
+      custom_summary?: string;
+      orig_custom_summary?: string;
+      summary_status?: number;
+      lang?: string;
+      model_status?: number;
+    };
+    // 元宝纪要
+    yuanbao_summary?: {
+      begin_summary?: string;
+      sub_points?: Array<{
+        sub_point_title: string;
+        sub_point_vec_items: Array<{
+          point: string;
+          refs: any[];
+        }>;
+      }>;
+      end_summary?: string;
       custom_summary?: string;
       orig_custom_summary?: string;
       summary_status?: number;

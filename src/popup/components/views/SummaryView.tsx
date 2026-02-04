@@ -10,6 +10,12 @@ import {
   ChapterSummaryCard,
   SpeakerSummaryCard,
   TodoCard,
+  DeepSeekSummaryCard,
+  TemplateSummaryCard,
+  SummaryPreferencesCard,
+  DSV3SummaryCard,
+  QWSummaryCard,
+  YuanbaoSummaryCard,
 } from '../cards';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
@@ -17,8 +23,13 @@ import { generateCompleteMinutesMarkdown } from '../../utils/markdown';
 import styles from './SummaryView.module.css';
 
 export function SummaryView() {
+  console.log('[SummaryView] 组件开始渲染');
+
   const { meetingData, isLoading } = useMeetingData();
   const { toast, showToast } = useToast();
+
+  console.log('[SummaryView] meetingData:', meetingData);
+  console.log('[SummaryView] isLoading:', isLoading);
 
   // 提取纪要数据
   const {
@@ -26,6 +37,12 @@ export function SummaryView() {
     chapter_summary_data,
     speaker_summary_data,
     todo_items,
+    deepseek_summary_data,
+    template_summary_data,
+    summary_preferences,
+    dsv3_summary_data,
+    qw_summary_data,
+    yuanbao_summary_data,
   } = meetingData || {};
 
   // 检查数据可用性
@@ -36,9 +53,29 @@ export function SummaryView() {
   const hasSpeakerSummary =
     speaker_summary_data && speaker_summary_data.summary_status === 2;
   const hasTodos = todo_items && todo_items.length > 0;
+  const hasDeepSeekSummary =
+    deepseek_summary_data && deepseek_summary_data.summary_status === 2;
+  const hasTemplateSummary =
+    template_summary_data && template_summary_data.summary_status === 2;
+  const hasSummaryPreferences =
+    summary_preferences && summary_preferences.summary_status === 2;
+  const hasDSV3Summary =
+    dsv3_summary_data && dsv3_summary_data.summary_status === 2;
+  const hasQWSummary = qw_summary_data && qw_summary_data.summary_status === 2;
+  const hasYuanbaoSummary =
+    yuanbao_summary_data && yuanbao_summary_data.summary_status === 2;
 
   const hasAnyData =
-    hasTopicSummary || hasChapterSummary || hasSpeakerSummary || hasTodos;
+    hasTopicSummary ||
+    hasChapterSummary ||
+    hasSpeakerSummary ||
+    hasTodos ||
+    hasDeepSeekSummary ||
+    hasTemplateSummary ||
+    hasSummaryPreferences ||
+    hasDSV3Summary ||
+    hasQWSummary ||
+    hasYuanbaoSummary;
 
   // 生成完整的 Markdown 纪要
   const completeMarkdown = useMemo(() => {
@@ -79,6 +116,49 @@ export function SummaryView() {
     },
     [showToast]
   );
+
+  // 生成导航项（必须在 early return 之前）
+  const navItems = useMemo(() => {
+    const items = [];
+    if (hasDeepSeekSummary)
+      items.push({ id: 'deepseek', label: 'DeepSeek纪要', icon: '🤖' });
+    if (hasTopicSummary)
+      items.push({ id: 'topic', label: '主题纪要', icon: '💡' });
+    if (hasTemplateSummary)
+      items.push({ id: 'template', label: '模板纪要', icon: '📝' });
+    if (hasSummaryPreferences)
+      items.push({ id: 'preferences', label: '纪要偏好', icon: '⚙️' });
+    if (hasDSV3Summary)
+      items.push({ id: 'dsv3', label: 'DSV3纪要', icon: '🔷' });
+    if (hasQWSummary) items.push({ id: 'qw', label: 'QW纪要', icon: '🔶' });
+    if (hasYuanbaoSummary)
+      items.push({ id: 'yuanbao', label: '元宝纪要', icon: '💰' });
+    if (hasChapterSummary)
+      items.push({ id: 'chapter', label: '分章节纪要', icon: '📑' });
+    if (hasSpeakerSummary)
+      items.push({ id: 'speaker', label: '发言人观点', icon: '👥' });
+    if (hasTodos) items.push({ id: 'todo', label: '待办事项', icon: '✅' });
+    return items;
+  }, [
+    hasDeepSeekSummary,
+    hasTopicSummary,
+    hasTemplateSummary,
+    hasSummaryPreferences,
+    hasDSV3Summary,
+    hasQWSummary,
+    hasYuanbaoSummary,
+    hasChapterSummary,
+    hasSpeakerSummary,
+    hasTodos,
+  ]);
+
+  // 滚动到指定锚点（必须在 early return 之前）
+  const scrollToSection = useCallback((sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   // 加载状态
   if (isLoading) {
@@ -126,38 +206,124 @@ export function SummaryView() {
         </button>
       </div>
 
+      {/* 快速导航 */}
+      {navItems.length > 1 && (
+        <div className={styles.navigation}>
+          <div className={styles.navLabel}>快速跳转:</div>
+          <div className={styles.navButtons}>
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                className={styles.navButton}
+                onClick={() => scrollToSection(item.id)}
+                aria-label={`跳转到${item.label}`}
+              >
+                <span className={styles.navIcon}>{item.icon}</span>
+                <span className={styles.navText}>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 纪要卡片列表 */}
       <div className={styles.cardsContainer}>
-        {/* 主题纪要卡片 */}
+        {/* 优先级1: DeepSeek纪要 (最高优先级) */}
+        {hasDeepSeekSummary && (
+          <div id="deepseek" className={styles.cardSection}>
+            <DeepSeekSummaryCard
+              data={deepseek_summary_data}
+              onCopy={() => handleCardCopy('DeepSeek纪要')}
+            />
+          </div>
+        )}
+
+        {/* 优先级2: 主题纪要 */}
         {hasTopicSummary && (
-          <TopicSummaryCard
-            data={topic_summary_data}
-            onCopy={() => handleCardCopy('主题纪要')}
-          />
+          <div id="topic" className={styles.cardSection}>
+            <TopicSummaryCard
+              data={topic_summary_data}
+              onCopy={() => handleCardCopy('主题纪要')}
+            />
+          </div>
+        )}
+
+        {/* 优先级3: 模板纪要 */}
+        {hasTemplateSummary && (
+          <div id="template" className={styles.cardSection}>
+            <TemplateSummaryCard
+              data={template_summary_data}
+              onCopy={() => handleCardCopy('模板纪要')}
+            />
+          </div>
+        )}
+
+        {/* 优先级4: 纪要偏好设置 */}
+        {hasSummaryPreferences && (
+          <div id="preferences" className={styles.cardSection}>
+            <SummaryPreferencesCard
+              data={summary_preferences}
+              onCopy={() => handleCardCopy('纪要偏好')}
+            />
+          </div>
+        )}
+
+        {/* 其他AI模型纪要 */}
+        {hasDSV3Summary && (
+          <div id="dsv3" className={styles.cardSection}>
+            <DSV3SummaryCard
+              data={dsv3_summary_data}
+              onCopy={() => handleCardCopy('DSV3纪要')}
+            />
+          </div>
+        )}
+
+        {hasQWSummary && (
+          <div id="qw" className={styles.cardSection}>
+            <QWSummaryCard
+              data={qw_summary_data}
+              onCopy={() => handleCardCopy('QW纪要')}
+            />
+          </div>
+        )}
+
+        {hasYuanbaoSummary && (
+          <div id="yuanbao" className={styles.cardSection}>
+            <YuanbaoSummaryCard
+              data={yuanbao_summary_data}
+              onCopy={() => handleCardCopy('元宝纪要')}
+            />
+          </div>
         )}
 
         {/* 分章节纪要卡片 */}
         {hasChapterSummary && (
-          <ChapterSummaryCard
-            data={chapter_summary_data}
-            onCopy={() => handleCardCopy('分章节纪要')}
-          />
+          <div id="chapter" className={styles.cardSection}>
+            <ChapterSummaryCard
+              data={chapter_summary_data}
+              onCopy={() => handleCardCopy('分章节纪要')}
+            />
+          </div>
         )}
 
         {/* 发言人观点卡片 */}
         {hasSpeakerSummary && (
-          <SpeakerSummaryCard
-            data={speaker_summary_data}
-            onCopy={() => handleCardCopy('发言人观点')}
-          />
+          <div id="speaker" className={styles.cardSection}>
+            <SpeakerSummaryCard
+              data={speaker_summary_data}
+              onCopy={() => handleCardCopy('发言人观点')}
+            />
+          </div>
         )}
 
         {/* 待办事项卡片 */}
         {hasTodos && (
-          <TodoCard
-            todos={todo_items}
-            onCopy={() => handleCardCopy('待办事项')}
-          />
+          <div id="todo" className={styles.cardSection}>
+            <TodoCard
+              todos={todo_items}
+              onCopy={() => handleCardCopy('待办事项')}
+            />
+          </div>
         )}
       </div>
 
