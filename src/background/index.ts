@@ -38,6 +38,7 @@ const TENCENT_MEETING_API_PATTERNS = [
 let currentMeetingContext: {
   meetingId?: string;
   recordingId?: string;
+  shareId?: string;
   cacheKey?: string;
   lastActivityTime: number;
 } = {
@@ -169,7 +170,7 @@ async function handleAPIResponse(payload: {
       payload.data
     );
 
-    // 合并URL、请求体和响应体中的会议标识
+// 合并URL、请求体和响应体中的会议标识
     // 优先级：请求体 > 响应体 > URL参数（因为统计API的ID在请求体中最准确）
     const extractedIds = {
       meetingId:
@@ -180,10 +181,12 @@ async function handleAPIResponse(payload: {
         requestBodyMeetingIds.recordingId ||
         responseBodyMeetingIds.recordingId ||
         urlMeetingIds.recordingId,
+      shareId:
+        requestBodyMeetingIds.shareId || urlMeetingIds.shareId,
     };
 
     // 更新全局会议上下文（如果有新信息）
-    if (extractedIds.meetingId || extractedIds.recordingId) {
+    if (extractedIds.meetingId || extractedIds.recordingId || extractedIds.shareId) {
       const now = Date.now();
       // 如果超过5分钟没有活动，或者检测到新的会议ID，重置上下文
       const isNewSession =
@@ -197,6 +200,7 @@ async function handleAPIResponse(payload: {
         currentMeetingContext = {
           meetingId: extractedIds.meetingId,
           recordingId: extractedIds.recordingId,
+          shareId: extractedIds.shareId,
           lastActivityTime: now,
         };
       } else {
@@ -213,6 +217,13 @@ async function handleAPIResponse(payload: {
           console.log(
             '[TXMeeting Background] 📝 从响应体补充 recording_id:',
             extractedIds.recordingId
+          );
+        }
+        if (extractedIds.shareId && !currentMeetingContext.shareId) {
+          currentMeetingContext.shareId = extractedIds.shareId;
+          console.log(
+            '[TXMeeting Background] 📝 补充 share_id:',
+            extractedIds.shareId
           );
         }
         currentMeetingContext.lastActivityTime = now;
@@ -248,10 +259,11 @@ async function handleAPIResponse(payload: {
     // 保存缓存键到上下文
     currentMeetingContext.cacheKey = meetingKey;
 
-    console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
+console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
     console.log('[TXMeeting Background] 📌 当前上下文:', {
       meetingId: currentMeetingContext.meetingId,
       recordingId: currentMeetingContext.recordingId,
+      shareId: currentMeetingContext.shareId,
       cacheKey: currentMeetingContext.cacheKey,
     });
 
@@ -814,6 +826,7 @@ function extractMeetingKeyFromURL(url: string): string | null {
 function extractMeetingIdsFromURL(url: string): {
   meetingId?: string;
   recordingId?: string;
+  shareId?: string;
 } {
   try {
     const urlObj = new URL(url);
@@ -825,7 +838,10 @@ function extractMeetingIdsFromURL(url: string): {
       recordingId:
         urlObj.searchParams.get('recording_id') ||
         urlObj.searchParams.get('recordingId') ||
-        urlObj.searchParams.get('record_id') || // 支持 record_id
+        urlObj.searchParams.get('record_id') ||
+        undefined,
+      shareId:
+        urlObj.searchParams.get('id') ||
         undefined,
     };
   } catch {
@@ -888,7 +904,7 @@ function extractMeetingIdsFromResponseBody(
 /**
  * 从API请求体中提取会议标识
  * 用于处理统计类API（get-smart-topic, get-time-line, get-chapter）
- * 这些API的会议ID在POST请求体中而不在URL参数中
+ * 以及共享链接场景的 get-mul-summary-and-todo API
  */
 function extractMeetingIdsFromRequestBody(
   apiType: string,
@@ -896,6 +912,7 @@ function extractMeetingIdsFromRequestBody(
 ): {
   meetingId?: string;
   recordingId?: string;
+  shareId?: string;
 } {
   try {
     // 统计类API（get-smart-topic, get-time-line, get-chapter）
@@ -918,6 +935,27 @@ function extractMeetingIdsFromRequestBody(
       return {
         meetingId,
         recordingId,
+      };
+    }
+
+    // get-mul-summary-and-todo API（共享链接场景）
+    // 请求体格式: { meeting_id: '...', record_id: '...', share_id: '...', summary_type: 0 }
+    if (apiType === 'get-mul-summary-and-todo') {
+      const meetingId = requestBody?.meeting_id;
+      const recordingId = requestBody?.record_id;
+      const shareId = requestBody?.share_id;
+
+      if (meetingId || recordingId || shareId) {
+        console.log(
+          '[TXMeeting Background] 📝 从 get-mul-summary-and-todo 请求体提取:',
+          { meetingId, recordingId, shareId }
+        );
+      }
+
+      return {
+        meetingId,
+        recordingId,
+        shareId,
       };
     }
 
