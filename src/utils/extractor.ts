@@ -147,6 +147,8 @@ export function extractMeetingData(apiResponses: {
   };
   smartTopic?: GetSmartTopicResponse;
   multiRecordFile?: GetMultiRecordFileResponse;
+  querySummaryAndNote?: GetMulSummaryAndTodoResponse;
+  queryTimeline?: GetTimeLineResponse;
 }): MeetingData | null {
   try {
     console.log('[Extractor] 开始提取会议数据...');
@@ -161,6 +163,8 @@ export function extractMeetingData(apiResponses: {
       hasSpeakerSummary: !!apiResponses.mulSummaryAndTodo?.speakerSummary,
       hasSmartTopic: !!apiResponses.smartTopic,
       hasRecordingFiles: !!apiResponses.multiRecordFile,
+      hasQuerySummaryAndNote: !!apiResponses.querySummaryAndNote,
+      hasQueryTimeline: !!apiResponses.queryTimeline,
     });
 
     // 提取核心数据
@@ -195,12 +199,22 @@ export function extractMeetingData(apiResponses: {
       ? extractFromChapter(apiResponses.chapter)
       : {};
 
-    const timelineData = apiResponses.timeLine
-      ? extractFromTimeLine(apiResponses.timeLine)
+    // 优先使用新的queryTimeline API，回退到timeLine
+    const timelineData = (apiResponses.queryTimeline || apiResponses.timeLine)
+      ? extractFromTimeLine(apiResponses.queryTimeline || apiResponses.timeLine!)
       : {};
 
-    const todoData = apiResponses.mulSummaryAndTodo
-      ? extractFromMulSummaryAndTodo(apiResponses.mulSummaryAndTodo)
+    // 优先使用新的querySummaryAndNote API，回退到mulSummaryAndTodo
+    const todoData = (apiResponses.querySummaryAndNote || apiResponses.mulSummaryAndTodo)
+      ? extractFromMulSummaryAndTodo(
+          apiResponses.querySummaryAndNote
+            ? {
+                topicSummary: apiResponses.querySummaryAndNote,
+                chapterSummary: apiResponses.querySummaryAndNote,
+                speakerSummary: apiResponses.querySummaryAndNote,
+              }
+            : apiResponses.mulSummaryAndTodo!
+        )
       : {};
 
     const topicData = apiResponses.smartTopic

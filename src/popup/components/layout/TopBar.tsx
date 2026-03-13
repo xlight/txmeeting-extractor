@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUIState } from '../../contexts/UIStateContext';
 import { useMeetingData } from '../../contexts/MeetingDataContext';
 import { generateMarkdownMinutes } from '../../utils/minutes';
+import { useVersionInfo, formatVersionDisplay } from '../../hooks/useVersionInfo';
 import type { ViewMode } from '../../types/ui';
 import styles from './TopBar.module.css';
 
@@ -17,6 +18,7 @@ export function TopBar() {
   const [localSearchValue, setLocalSearchValue] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<number | null>(null);
+  const { version, isLoading: versionLoading } = useVersionInfo();
 
   // 搜索框展开时自动聚焦
   useEffect(() => {
@@ -110,6 +112,17 @@ export function TopBar() {
     { key: 'summary', label: '纪要' },
   ];
 
+  // 显示版本信息点击处理
+  const handleVersionClick = () => {
+    if (version && !versionLoading) {
+      const buildInfo = (window as any).__TXMEETING_BUILD_INFO__;
+      const details = buildInfo ? 
+        `版本: ${buildInfo.version}\n构建时间: ${buildInfo.buildDateLocal}\n构建编号: ${buildInfo.buildNumber}` :
+        `版本: ${version}`;
+      alert(`${details}\n\n可在控制台中输入以下命令获取更多信息:\nwindow.__TXMEETING_VERSION__\nwindow.__TXMEETING_BUILD_INFO__`);
+    }
+  };
+
   return (
     <div className={styles.topBar}>
       <div className={styles.left}>
@@ -175,6 +188,17 @@ export function TopBar() {
         >
           导出
         </button>
+        
+        {!versionLoading && version && (
+          <button
+            className={styles.versionButton}
+            onClick={handleVersionClick}
+            aria-label={`版本信息: ${formatVersionDisplay(version)}`}
+            title={`点击查看版本信息: ${formatVersionDisplay(version)}`}
+          >
+            {formatVersionDisplay(version).split(' ')[0]}
+          </button>
+        )}
       </div>
     </div>
   );

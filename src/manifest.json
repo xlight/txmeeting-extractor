@@ -8,12 +8,8 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": [
-    "storage"
-  ],
-  "host_permissions": [
-    "https://meeting.tencent.com/*"
-  ],
+  "permissions": ["storage"],
+  "host_permissions": ["https://meeting.tencent.com/*"],
   "background": {
     "service_worker": "background/background.js",
     "type": "module"
@@ -42,6 +38,6 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
-  }
+  },
+  "update_url": "http://upext.chrome.360.cn/intf.php?method=ExtUpdate.query"
 }
-

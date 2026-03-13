@@ -161,3 +161,26 @@
   background-color: var(--color-primary-active);
   border-color: var(--color-primary-active);
 }
+
+/* 版本按钮 */
+.versionButton {
+  height: 32px;
+  padding: 0 var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.versionButton:hover {
+  opacity: 1;
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
