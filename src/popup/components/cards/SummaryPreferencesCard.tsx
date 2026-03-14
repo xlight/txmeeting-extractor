@@ -15,21 +15,23 @@ export const SummaryPreferencesCard = React.memo<SummaryPreferencesCardProps>(
   ({ data, onCopy }) => {
     const markdown = useMemo(() => {
       const lines: string[] = ['# ⚙️ 纪要偏好设置\n'];
-      
+
       if (data.custom_summary) {
         lines.push('## 自定义纪要\n');
         lines.push(stripHtml(data.custom_summary) + '\n');
       }
-      
+
       if (data.begin_summary) {
         lines.push('## 开场总结\n');
         lines.push(data.begin_summary + '\n');
       }
-      
+
       if (data.sub_points && data.sub_points.length > 0) {
         lines.push('## 核心要点\n');
         data.sub_points.forEach((point, index) => {
-          lines.push(`### ${index + 1}. ${point.sub_point_title || '无标题'}\n`);
+          lines.push(
+            `### ${index + 1}. ${point.sub_point_title || '无标题'}\n`
+          );
           if (point.sub_point_vec_items?.length > 0) {
             point.sub_point_vec_items.forEach((item) => {
               lines.push(`- ${item.point}`);
@@ -38,12 +40,12 @@ export const SummaryPreferencesCard = React.memo<SummaryPreferencesCardProps>(
           }
         });
       }
-      
+
       if (data.end_summary) {
         lines.push('## 结束总结\n');
         lines.push(data.end_summary + '\n');
       }
-      
+
       return lines.join('\n');
     }, [data]);
 
@@ -73,7 +75,7 @@ export const SummaryPreferencesCard = React.memo<SummaryPreferencesCardProps>(
           {data.custom_summary && data.custom_summary.trim() ? (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>自定义纪要</h3>
-              <div 
+              <div
                 className={styles.htmlContent}
                 dangerouslySetInnerHTML={{ __html: data.custom_summary }}
               />
@@ -92,14 +94,20 @@ export const SummaryPreferencesCard = React.memo<SummaryPreferencesCardProps>(
               <h3 className={styles.sectionTitle}>核心要点</h3>
               <div className={styles.pointsList}>
                 {data.sub_points
-                  .filter(point => point.sub_point_title || point.sub_point_vec_items?.length)
+                  .filter(
+                    (point) =>
+                      point.sub_point_title || point.sub_point_vec_items?.length
+                  )
                   .map((point, index) => (
                     <div key={index} className={styles.pointItem}>
                       <div className={styles.pointHeader}>
                         <span className={styles.pointNumber}>{index + 1}</span>
-                        <h4 className={styles.pointTitle}>{point.sub_point_title || '无标题'}</h4>
+                        <h4 className={styles.pointTitle}>
+                          {point.sub_point_title || '无标题'}
+                        </h4>
                       </div>
-                      {point.sub_point_vec_items && point.sub_point_vec_items.length > 0 ? (
+                      {point.sub_point_vec_items &&
+                      point.sub_point_vec_items.length > 0 ? (
                         <ul className={styles.pointContent}>
                           {point.sub_point_vec_items.map((item, itemIndex) => (
                             <li key={itemIndex}>{item.point}</li>
@@ -134,16 +142,21 @@ SummaryPreferencesCard.displayName = 'SummaryPreferencesCard';
 
 function stripHtml(html: string): string {
   if (!html || !html.trim()) return '';
-  return html
+  let text = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
-    .replace(/<li>/gi, '- ')
-    .replace(/<[^>]*>/g, '')
+    .replace(/<li>/gi, '- ');
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== previous);
+  return text
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
     .trim();
 }

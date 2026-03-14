@@ -150,16 +150,21 @@ DeepSeekSummaryCard.displayName = 'DeepSeekSummaryCard';
 function stripHtml(html: string): string {
   if (!html || !html.trim()) return '';
 
-  return html
+  let text = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
-    .replace(/<li>/gi, '- ')
-    .replace(/<[^>]*>/g, '')
+    .replace(/<li>/gi, '- ');
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== previous);
+  return text
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
     .trim();
 }

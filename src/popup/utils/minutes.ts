@@ -11,17 +11,26 @@ import type { MeetingData } from '../../types/meeting';
 function stripHtml(html: string): string {
   if (!html || !html.trim()) return '';
 
-  return html
-    .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to newlines
-    .replace(/<\/p>/gi, '\n\n') // Convert </p> to double newlines
-    .replace(/<li>/gi, '- ') // Convert <li> to bullet points
-    .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-    .replace(/&nbsp;/g, ' ') // Replace &nbsp;
-    .replace(/&lt;/g, '<') // Decode entities
+  // 先处理特殊标签
+  let text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<li>/gi, '- ');
+
+  // 反复移除所有HTML标签，防止嵌套标签绕过（如 <scrip<script>...</script>t>）
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== previous);
+
+  return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
     .trim();
 }
 
