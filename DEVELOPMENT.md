@@ -3,7 +3,7 @@
 ## 项目结构
 
 ```
-txmeeting-getinfo/
+txmeeting-extractor/
 ├── src/
 │   ├── background/          # Service Worker后台脚本
 │   │   └── index.ts         # API拦截和缓存逻辑
