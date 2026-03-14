@@ -489,6 +489,11 @@ export interface MeetingData {
   // 新增字段（UI 展示用统计数据）
   statistics?: MeetingStatistics; // 会议统计数据（智能话题、参会人员发言、章节）
 
+  // 新增字段（来自 query-summary-and-note 和 query-timeline 新版 API）
+  official_template_summary_data?: OfficialTemplateSummaryData; // 官方模板纪要（Markdown 格式）
+  timeline_chapters?: Chapter[]; // 时间轴转换的章节列表
+  summary_version?: number; // 纪要版本号
+
   captured_at: number; // 数据捕获时间戳
 }
 
@@ -895,6 +900,85 @@ export interface GetMultiRecordFileResponse {
   timestamp?: number;
 }
 
+// ==================== 新版页面 API 响应类型 ====================
+
+/**
+ * query-summary-and-note API 响应
+ * 腾讯会议新版页面使用的纪要 API，返回 LLM 生成的 Markdown 格式内容
+ */
+export interface QuerySummaryAndNoteResponse {
+  code: number;
+  err_detail?: string;
+  msg?: string;
+  data?: {
+    summary_version?: number; // 纪要版本号
+    is_audio_detect_complete?: boolean;
+    deepseek_summary?: unknown; // 与旧版结构相同，复用现有提取
+    todo?: unknown; // 与旧版结构相同
+    template_summary?: unknown; // 与旧版结构相同
+    official_template_summary?: {
+      summary_template_id: string;
+      summary_template_title: string; // 如 "智能总结"
+      summary_infos: Array<{
+        summary_id: string;
+        content: string; // LLM 生成的 Markdown 文本
+        ori_content: string;
+        time_list: number[]; // 关联的时间戳（秒）
+        type: number;
+      }>;
+      status: number; // 0=生成中, 1=失败, 2=成功
+      lang: string;
+    };
+    user_note_info?: unknown[];
+    yuanbao_summary?: unknown;
+  };
+  nonce?: string;
+  timestamp?: number;
+}
+
+/**
+ * query-timeline API 响应
+ * 腾讯会议新版页面使用的时间轴 API，返回叙事性事件
+ */
+export interface QueryTimelineResponse {
+  code: number;
+  err_detail?: string;
+  msg?: string;
+  data?: {
+    timeline_info?: {
+      timeline_infos: Array<{
+        id: string;
+        content: string; // 叙事性描述
+        ori_content: string;
+        start_time: number; // 秒
+      }>;
+      status: number; // 0=生成中, 1=失败, 2=成功
+      lang: string;
+      is_audio_detect_complete?: boolean;
+    };
+  };
+  nonce?: string;
+  timestamp?: number;
+}
+
+/**
+ * 提取后的官方模板纪要数据
+ * 从 query-summary-and-note API 响应中提取
+ */
+export interface OfficialTemplateSummaryData {
+  summary_template_id: string;
+  summary_template_title: string;
+  summary_infos: Array<{
+    summary_id: string;
+    content: string; // 原始 Markdown 文本
+    time_list: number[]; // 毫秒级时间戳
+    type: number;
+  }>;
+  full_markdown: string; // 所有 content 拼接的完整 Markdown
+  status: number;
+  lang: string;
+}
+
 /**
  * 通用 API 响应类型
  */
@@ -1135,6 +1219,40 @@ export function isGetMultiRecordFileResponse(
   value: unknown
 ): value is GetMultiRecordFileResponse {
   const response = value as GetMultiRecordFileResponse;
+  return (
+    typeof response === 'object' &&
+    response !== null &&
+    typeof response.code === 'number' &&
+    response.code === 0 &&
+    response.data !== undefined
+  );
+}
+
+// ==================== 新版页面 API 类型守卫 ====================
+
+/**
+ * 类型守卫：检查是否为有效的 QuerySummaryAndNoteResponse
+ */
+export function isQuerySummaryAndNoteResponse(
+  value: unknown
+): value is QuerySummaryAndNoteResponse {
+  const response = value as QuerySummaryAndNoteResponse;
+  return (
+    typeof response === 'object' &&
+    response !== null &&
+    typeof response.code === 'number' &&
+    response.code === 0 &&
+    response.data !== undefined
+  );
+}
+
+/**
+ * 类型守卫：检查是否为有效的 QueryTimelineResponse
+ */
+export function isQueryTimelineResponse(
+  value: unknown
+): value is QueryTimelineResponse {
+  const response = value as QueryTimelineResponse;
   return (
     typeof response === 'object' &&
     response !== null &&

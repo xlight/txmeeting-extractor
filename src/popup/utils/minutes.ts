@@ -110,6 +110,16 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
     minutes += `## 详细纪要\n\n${meetingData.full_summary.full_summary}\n\n`;
   }
 
+  // 官方模板纪要（新版 API，LLM 生成的 Markdown 格式）
+  if (
+    meetingData.official_template_summary_data &&
+    meetingData.official_template_summary_data.status === 2
+  ) {
+    minutes += `## ${meetingData.official_template_summary_data.summary_template_title || '智能总结'}\n\n`;
+    minutes +=
+      meetingData.official_template_summary_data.full_markdown + '\n\n';
+  }
+
   // 主题纪要（新增）
   if (
     meetingData.topic_summary_data &&

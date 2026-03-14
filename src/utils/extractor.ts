@@ -47,6 +47,12 @@ import {
   isGetMulSummaryAndTodoResponse,
   isGetSmartTopicResponse,
   isGetMultiRecordFileResponse,
+  // 新版页面 API 类型
+  QuerySummaryAndNoteResponse,
+  QueryTimelineResponse,
+  OfficialTemplateSummaryData,
+  isQuerySummaryAndNoteResponse,
+  isQueryTimelineResponse,
 } from '../types/meeting';
 
 /**
@@ -147,8 +153,8 @@ export function extractMeetingData(apiResponses: {
   };
   smartTopic?: GetSmartTopicResponse;
   multiRecordFile?: GetMultiRecordFileResponse;
-  querySummaryAndNote?: GetMulSummaryAndTodoResponse;
-  queryTimeline?: GetTimeLineResponse;
+  querySummaryAndNote?: QuerySummaryAndNoteResponse;
+  queryTimeline?: QueryTimelineResponse;
 }): MeetingData | null {
   try {
     console.log('[Extractor] 开始提取会议数据...');
@@ -199,22 +205,28 @@ export function extractMeetingData(apiResponses: {
       ? extractFromChapter(apiResponses.chapter)
       : {};
 
-    // 优先使用新的queryTimeline API，回退到timeLine
-    const timelineData = (apiResponses.queryTimeline || apiResponses.timeLine)
-      ? extractFromTimeLine(apiResponses.queryTimeline || apiResponses.timeLine!)
+    // 旧版时间轴 API（参会者发言统计）
+    const timelineData = apiResponses.timeLine
+      ? extractFromTimeLine(apiResponses.timeLine)
       : {};
 
-    // 优先使用新的querySummaryAndNote API，回退到mulSummaryAndTodo
-    const todoData = (apiResponses.querySummaryAndNote || apiResponses.mulSummaryAndTodo)
-      ? extractFromMulSummaryAndTodo(
-          apiResponses.querySummaryAndNote
-            ? {
-                topicSummary: apiResponses.querySummaryAndNote,
-                chapterSummary: apiResponses.querySummaryAndNote,
-                speakerSummary: apiResponses.querySummaryAndNote,
-              }
-            : apiResponses.mulSummaryAndTodo!
-        )
+    // 新版时间轴 API（叙事性事件 -> 章节）
+    const queryTimelineData = apiResponses.queryTimeline
+      ? extractFromQueryTimeline(apiResponses.queryTimeline)
+      : {};
+    console.log('[Extractor] 🔍 queryTimelineData 提取结果:', {
+      hasTimelineChapters: !!queryTimelineData.timeline_chapters,
+      count: queryTimelineData.timeline_chapters?.length,
+    });
+
+    // 旧版纪要 API
+    const todoData = apiResponses.mulSummaryAndTodo
+      ? extractFromMulSummaryAndTodo(apiResponses.mulSummaryAndTodo)
+      : {};
+
+    // 新版纪要 API（LLM 生成的 Markdown）
+    const summaryNoteData = apiResponses.querySummaryAndNote
+      ? extractFromQuerySummaryAndNote(apiResponses.querySummaryAndNote)
       : {};
 
     const topicData = apiResponses.smartTopic
@@ -236,10 +248,20 @@ export function extractMeetingData(apiResponses: {
       hasSpeakerSummary: !!todoData.speaker_summary_data,
       topicCount: topicData.smart_topics?.length || 0,
       fileCount: fileData.recording_files?.length || 0,
+      hasOfficialTemplateSummary:
+        !!summaryNoteData.official_template_summary_data,
+      timelineChaptersCount: queryTimelineData.timeline_chapters?.length || 0,
     });
 
-    // 合并数据，recordData 的 metadata 优先
-    // 如果有 chapter_details，将其转换为 chapters 格式（优先使用详细数据）
+    // 章节数据源优先级：chapter_details > chapters > timeline_chapters
+    console.log('[Extractor] 🔍 章节优先级检查:', {
+      hasChapterDetails: !!chapterData.chapter_details,
+      chapterDetailsLength: chapterData.chapter_details?.length,
+      hasMinutesChapters: !!minutesData.chapters,
+      minutesChaptersLength: minutesData.chapters?.length,
+      hasTimelineChapters: !!queryTimelineData.timeline_chapters,
+      timelineChaptersLength: queryTimelineData.timeline_chapters?.length,
+    });
     const chapters =
       chapterData.chapter_details && chapterData.chapter_details.length > 0
         ? chapterData.chapter_details.map((detail) => ({
@@ -249,7 +271,13 @@ export function extractMeetingData(apiResponses: {
             end_time: detail.end_time,
             summary: detail.summary,
           }))
-        : minutesData.chapters;
+        : minutesData.chapters && minutesData.chapters.length > 0
+          ? minutesData.chapters
+          : queryTimelineData.timeline_chapters;
+    console.log('[Extractor] 🔍 最终章节数据:', {
+      chaptersLength: chapters?.length,
+      chaptersType: Array.isArray(chapters) ? 'array' : typeof chapters,
+    });
 
     console.log('[Extractor] 🔍 准备合并数据，keywords 详情:', {
       minutesDataKeywords: minutesData.keywords,
@@ -286,6 +314,12 @@ export function extractMeetingData(apiResponses: {
 
       // AI 模型纪要
       deepseek_summary_data: todoData.deepseek_summary_data,
+
+      // 新版页面 API 数据
+      official_template_summary_data:
+        summaryNoteData.official_template_summary_data,
+      timeline_chapters: queryTimelineData.timeline_chapters,
+      summary_version: summaryNoteData.summary_version,
 
       captured_at: Date.now(),
     };
@@ -1457,4 +1491,156 @@ export function extractMeetingStatistics(
   });
 
   return statistics;
+}
+
+// ==================== 新版页面 API 提取函数 ====================
+
+/**
+ * 从 query-summary-and-note API 响应中提取官方模板纪要
+ * 返回 LLM 生成的 Markdown 格式内容
+ */
+export function extractFromQuerySummaryAndNote(
+  response: QuerySummaryAndNoteResponse
+): {
+  official_template_summary_data?: OfficialTemplateSummaryData;
+  summary_version?: number;
+} {
+  if (!isQuerySummaryAndNoteResponse(response) || !response.data) {
+    console.warn('[Extractor] 无效的 query-summary-and-note API 响应');
+    return {};
+  }
+
+  const { data } = response;
+  const result: {
+    official_template_summary_data?: OfficialTemplateSummaryData;
+    summary_version?: number;
+  } = {};
+
+  // 提取版本号
+  if (data.summary_version !== undefined) {
+    result.summary_version = data.summary_version;
+  }
+
+  // 提取官方模板纪要
+  const ots = data.official_template_summary;
+  if (
+    ots &&
+    ots.status === 2 &&
+    ots.summary_infos &&
+    ots.summary_infos.length > 0
+  ) {
+    // 将所有 content 拼接为完整 Markdown
+    const fullMarkdown = ots.summary_infos
+      .map((info) => info.content)
+      .join('\n\n');
+
+    // 将时间戳从秒转换为毫秒
+    const summaryInfos = ots.summary_infos.map((info) => ({
+      summary_id: info.summary_id,
+      content: info.content,
+      time_list: (info.time_list || []).map((t) => t * 1000),
+      type: info.type,
+    }));
+
+    result.official_template_summary_data = {
+      summary_template_id: ots.summary_template_id,
+      summary_template_title: ots.summary_template_title,
+      summary_infos: summaryInfos,
+      full_markdown: fullMarkdown,
+      status: ots.status,
+      lang: ots.lang,
+    };
+
+    console.log('[Extractor] ✅ 提取官方模板纪要成功:', {
+      title: ots.summary_template_title,
+      infosCount: ots.summary_infos.length,
+      markdownLength: fullMarkdown.length,
+    });
+  } else {
+    console.log('[Extractor] 官方模板纪要未就绪或为空:', {
+      hasOts: !!ots,
+      status: ots?.status,
+      infosCount: ots?.summary_infos?.length || 0,
+    });
+  }
+
+  return result;
+}
+
+/**
+ * 从 query-timeline API 响应中提取时间轴事件并转换为章节
+ * 将叙事性事件转换为 Chapter[] 格式
+ */
+export function extractFromQueryTimeline(response: QueryTimelineResponse): {
+  timeline_chapters?: Chapter[];
+} {
+  console.log('[Extractor] 🔍 extractFromQueryTimeline 输入检查:', {
+    isResponse: isQueryTimelineResponse(response),
+    hasData: !!response?.data,
+    hasTimelineInfo: !!response?.data?.timeline_info,
+  });
+
+  if (!isQueryTimelineResponse(response) || !response.data) {
+    console.warn('[Extractor] 无效的 query-timeline API 响应:', {
+      code: (response as any)?.code,
+      hasData: !!(response as any)?.data,
+    });
+    return {};
+  }
+
+  const timelineInfo = response.data.timeline_info;
+  if (
+    !timelineInfo ||
+    timelineInfo.status !== 2 ||
+    !timelineInfo.timeline_infos ||
+    timelineInfo.timeline_infos.length === 0
+  ) {
+    console.log('[Extractor] 时间轴数据未就绪或为空:', {
+      hasTimelineInfo: !!timelineInfo,
+      status: timelineInfo?.status,
+      infosCount: timelineInfo?.timeline_infos?.length || 0,
+    });
+    return {};
+  }
+
+  // 按 start_time 排序
+  const sortedEvents = [...timelineInfo.timeline_infos].sort(
+    (a, b) => a.start_time - b.start_time
+  );
+
+  // 转换为 Chapter 格式
+  const chapters: Chapter[] = sortedEvents.map((event, index) => {
+    const startTimeMs = event.start_time * 1000; // 秒转毫秒
+    const nextEvent = sortedEvents[index + 1];
+    const endTimeMs = nextEvent ? nextEvent.start_time * 1000 : 0; // 最后一个事件没有结束时间
+
+    // 从 content 中提取标题（取前 30 个字符或首句）
+    let title = event.content;
+    const firstSentence = event.content.match(/^[^。！？\n]+/);
+    if (firstSentence && firstSentence[0].length <= 30) {
+      title = firstSentence[0];
+    } else if (event.content.length > 30) {
+      title = event.content.substring(0, 30) + '...';
+    }
+
+    return {
+      id: event.id,
+      title: title,
+      start_time: startTimeMs,
+      end_time: endTimeMs,
+      summary: event.content,
+    };
+  });
+
+  console.log('[Extractor] ✅ 时间轴转章节成功:', {
+    eventsCount: sortedEvents.length,
+    chaptersCount: chapters.length,
+  });
+
+  const result = { timeline_chapters: chapters };
+  console.log('[Extractor] 🔍 extractFromQueryTimeline 返回:', {
+    hasTimelineChapters: !!result.timeline_chapters,
+    count: result.timeline_chapters?.length,
+  });
+  return result;
 }

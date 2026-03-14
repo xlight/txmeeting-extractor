@@ -12,3 +12,4 @@ export { SummaryPreferencesCard } from './SummaryPreferencesCard';
 export { DSV3SummaryCard } from './DSV3SummaryCard';
 export { QWSummaryCard } from './QWSummaryCard';
 export { YuanbaoSummaryCard } from './YuanbaoSummaryCard';
+export { OfficialTemplateSummaryCard } from './OfficialTemplateSummaryCard';

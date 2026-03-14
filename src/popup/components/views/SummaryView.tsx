@@ -16,6 +16,7 @@ import {
   DSV3SummaryCard,
   QWSummaryCard,
   YuanbaoSummaryCard,
+  OfficialTemplateSummaryCard,
 } from '../cards';
 import { Toast } from '../common/Toast';
 import { useToast } from '../../hooks/useToast';
@@ -43,6 +44,7 @@ export function SummaryView() {
     dsv3_summary_data,
     qw_summary_data,
     yuanbao_summary_data,
+    official_template_summary_data,
   } = meetingData || {};
 
   // 检查数据可用性
@@ -64,6 +66,9 @@ export function SummaryView() {
   const hasQWSummary = qw_summary_data && qw_summary_data.summary_status === 2;
   const hasYuanbaoSummary =
     yuanbao_summary_data && yuanbao_summary_data.summary_status === 2;
+  const hasOfficialTemplateSummary =
+    official_template_summary_data &&
+    official_template_summary_data.status === 2;
 
   const hasAnyData =
     hasTopicSummary ||
@@ -75,7 +80,8 @@ export function SummaryView() {
     hasSummaryPreferences ||
     hasDSV3Summary ||
     hasQWSummary ||
-    hasYuanbaoSummary;
+    hasYuanbaoSummary ||
+    hasOfficialTemplateSummary;
 
   // 生成完整的 Markdown 纪要
   const completeMarkdown = useMemo(() => {
@@ -84,7 +90,8 @@ export function SummaryView() {
       hasTopicSummary ? topic_summary_data : undefined,
       hasChapterSummary ? chapter_summary_data : undefined,
       hasSpeakerSummary ? speaker_summary_data : undefined,
-      hasTodos ? todo_items : undefined
+      hasTodos ? todo_items : undefined,
+      hasOfficialTemplateSummary ? official_template_summary_data : undefined
     );
   }, [
     meetingData,
@@ -92,10 +99,12 @@ export function SummaryView() {
     hasChapterSummary,
     hasSpeakerSummary,
     hasTodos,
+    hasOfficialTemplateSummary,
     topic_summary_data,
     chapter_summary_data,
     speaker_summary_data,
     todo_items,
+    official_template_summary_data,
   ]);
 
   // 复制全部纪要
@@ -120,6 +129,8 @@ export function SummaryView() {
   // 生成导航项（必须在 early return 之前）
   const navItems = useMemo(() => {
     const items = [];
+    if (hasOfficialTemplateSummary)
+      items.push({ id: 'official-template', label: '智能总结', icon: '📝' });
     if (hasDeepSeekSummary)
       items.push({ id: 'deepseek', label: 'DeepSeek纪要', icon: '🤖' });
     if (hasTopicSummary)
@@ -140,6 +151,7 @@ export function SummaryView() {
     if (hasTodos) items.push({ id: 'todo', label: '待办事项', icon: '✅' });
     return items;
   }, [
+    hasOfficialTemplateSummary,
     hasDeepSeekSummary,
     hasTopicSummary,
     hasTemplateSummary,
@@ -228,7 +240,17 @@ export function SummaryView() {
 
       {/* 纪要卡片列表 */}
       <div className={styles.cardsContainer}>
-        {/* 优先级1: DeepSeek纪要 (最高优先级) */}
+        {/* 优先级0: 官方模板纪要（新版 API，最高优先级） */}
+        {hasOfficialTemplateSummary && official_template_summary_data && (
+          <div id="official-template" className={styles.cardSection}>
+            <OfficialTemplateSummaryCard
+              data={official_template_summary_data}
+              onCopy={() => handleCardCopy('智能总结')}
+            />
+          </div>
+        )}
+
+        {/* 优先级1: DeepSeek纪要 */}
         {hasDeepSeekSummary && (
           <div id="deepseek" className={styles.cardSection}>
             <DeepSeekSummaryCard

@@ -8,6 +8,7 @@ import {
   ChapterSummaryData,
   SpeakerSummaryData,
   TodoItemData,
+  OfficialTemplateSummaryData,
 } from '../../types/meeting';
 
 /**
@@ -136,15 +137,31 @@ export function todosToMarkdown(todos: TodoItemData[]): string {
 }
 
 /**
+ * 将官方模板纪要转换为 Markdown 格式
+ * 数据已经是 Markdown 格式，直接返回
+ */
+export function officialTemplateSummaryToMarkdown(
+  data: OfficialTemplateSummaryData
+): string {
+  return `# 📝 ${data.summary_template_title || '智能总结'}\n\n${data.full_markdown}`;
+}
+
+/**
  * 生成完整会议纪要的 Markdown 文本
  */
 export function generateCompleteMinutesMarkdown(
   topicData?: TopicSummaryData,
   chapterData?: ChapterSummaryData,
   speakerData?: SpeakerSummaryData,
-  todos?: TodoItemData[]
+  todos?: TodoItemData[],
+  officialTemplateData?: OfficialTemplateSummaryData
 ): string {
   const sections: string[] = [];
+
+  // 官方模板纪要（新版 API，优先级最高）
+  if (officialTemplateData && officialTemplateData.status === 2) {
+    sections.push(officialTemplateSummaryToMarkdown(officialTemplateData));
+  }
 
   // 主题纪要
   if (topicData && topicData.summary_status === 2) {

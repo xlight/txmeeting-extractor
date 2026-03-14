@@ -13,10 +13,11 @@ const manifestData = JSON.parse(fs.readFileSync(manifestSrcPath, 'utf8'));
 
 // 生成构建时间戳
 const now = new Date();
-const buildTimestamp = now.toISOString()
-  .replace(/[-:T]/g, '')     // 移除日期分隔符
-  .replace(/\..+/, '')       // 移除毫秒和时区
-  .slice(0, 12);            // 取前12位：YYYYMMDDHHMM
+const buildTimestamp = now
+  .toISOString()
+  .replace(/[-:T]/g, '') // 移除日期分隔符
+  .replace(/\..+/, '') // 移除毫秒和时区
+  .slice(0, 12); // 取前12位：YYYYMMDDHHMM
 
 // 从时间戳生成构建编号（取后6位作为第四个版本数字）
 const buildNumber = parseInt(buildTimestamp.slice(-6), 10);
@@ -51,7 +52,7 @@ const versionInfo = {
   buildTimestamp: buildTimestamp,
   buildDate: now.toISOString(),
   buildDateLocal: now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-  buildNumber: buildTimestamp
+  buildNumber: buildTimestamp,
 };
 
 // 写入版本信息文件到dist目录
@@ -88,16 +89,16 @@ if (fs.existsSync(srcDir)) {
 const backgroundJsPath = path.join(distDir, 'background/background.js');
 if (fs.existsSync(backgroundJsPath)) {
   let backgroundJs = fs.readFileSync(backgroundJsPath, 'utf8');
-  
-  // 在脚本开头添加版本信息
+
+  // 在脚本开头添加版本信息（Service Worker 使用 self 而非 window）
   const versionInjection = `
 // 版本信息注入
-window.__TXMEETING_VERSION__ = ${JSON.stringify(detailedVersion)};
-window.__TXMEETING_BUILD_INFO__ = ${JSON.stringify(versionInfo)};
+self.__TXMEETING_VERSION__ = ${JSON.stringify(detailedVersion)};
+self.__TXMEETING_BUILD_INFO__ = ${JSON.stringify(versionInfo)};
 console.log('[TXMeeting] 版本: ${detailedVersion}');
 console.log('[TXMeeting] 构建时间: ${versionInfo.buildDateLocal}');
 `;
-  
+
   backgroundJs = versionInjection + backgroundJs;
   fs.writeFileSync(backgroundJsPath, backgroundJs);
 }
@@ -106,7 +107,7 @@ console.log('[TXMeeting] 构建时间: ${versionInfo.buildDateLocal}');
 const contentJsPath = path.join(distDir, 'content/content.js');
 if (fs.existsSync(contentJsPath)) {
   let contentJs = fs.readFileSync(contentJsPath, 'utf8');
-  
+
   // 在脚本开头添加版本信息
   const versionInjection = `
 // 版本信息注入
@@ -114,7 +115,7 @@ window.__TXMEETING_VERSION__ = ${JSON.stringify(detailedVersion)};
 window.__TXMEETING_BUILD_INFO__ = ${JSON.stringify(versionInfo)};
 console.log('[TXMeeting] Content Script 版本: ${detailedVersion}');
 `;
-  
+
   contentJs = versionInjection + contentJs;
   fs.writeFileSync(contentJsPath, contentJs);
 }
@@ -123,7 +124,7 @@ console.log('[TXMeeting] Content Script 版本: ${detailedVersion}');
 const injectedJsPath = path.join(distDir, 'content/injected.js');
 if (fs.existsSync(injectedJsPath)) {
   let injectedJs = fs.readFileSync(injectedJsPath, 'utf8');
-  
+
   // 在脚本开头添加版本信息
   const versionInjection = `
 // 版本信息注入
@@ -131,7 +132,7 @@ window.__TXMEETING_VERSION__ = ${JSON.stringify(detailedVersion)};
 window.__TXMEETING_BUILD_INFO__ = ${JSON.stringify(versionInfo)};
 console.log('[TXMeeting] Injected Script 版本: ${detailedVersion}');
 `;
-  
+
   injectedJs = versionInjection + injectedJs;
   fs.writeFileSync(injectedJsPath, injectedJs);
 }
@@ -140,7 +141,9 @@ console.log('[TXMeeting] Injected Script 版本: ${detailedVersion}');
 console.log('✅ 构建后处理完成');
 console.log(`📦 版本信息: ${originalVersion} → ${detailedVersion}`);
 console.log(`🔧 Chrome版本号: ${chromeVersion}`);
-console.log(`⏰ 构建时间: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
+console.log(
+  `⏰ 构建时间: ${now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+);
 console.log(`📁 输出目录: ${distDir}`);
 console.log(`📄 版本信息文件: ${versionInfoPath}`);
 console.log('');

@@ -18,6 +18,9 @@ import {
   GetMulSummaryAndTodoResponse,
   GetSmartTopicResponse,
   GetMultiRecordFileResponse,
+  // 新版页面 API 类型
+  QuerySummaryAndNoteResponse,
+  QueryTimelineResponse,
 } from '../types/meeting';
 import {
   extractMeetingData,
@@ -72,9 +75,9 @@ const apiResponseCache: Map<
     };
     smartTopic?: GetSmartTopicResponse;
     multiRecordFile?: GetMultiRecordFileResponse;
-    // 新API格式的支持
-    querySummaryAndNote?: GetMulSummaryAndTodoResponse; // query-summary-and-note API
-    queryTimeline?: GetTimeLineResponse; // query-timeline API
+    // 新版页面 API
+    querySummaryAndNote?: QuerySummaryAndNoteResponse; // query-summary-and-note API
+    queryTimeline?: QueryTimelineResponse; // query-timeline API
     timestamp: number;
   }
 > = new Map();
@@ -157,9 +160,12 @@ async function handleAPIResponse(payload: {
   console.log('[TXMeeting Background] 📦 响应数据:', payload.data);
   console.log('[TXMeeting Background] 📝 请求方法:', payload.method);
   console.log('[TXMeeting Background] 📝 请求体:', payload.requestBody);
-  
+
   // 特别处理新的query API
-  if (payload.url.includes('query-summary-and-note') || payload.url.includes('query-timeline')) {
+  if (
+    payload.url.includes('query-summary-and-note') ||
+    payload.url.includes('query-timeline')
+  ) {
     console.log('[TXMeeting Background] 🆕 检测到新API格式:', payload.url);
   }
 
@@ -188,7 +194,7 @@ async function handleAPIResponse(payload: {
       payload.data
     );
 
-// 合并URL、请求体和响应体中的会议标识
+    // 合并URL、请求体和响应体中的会议标识
     // 优先级：请求体 > 响应体 > URL参数（因为统计API的ID在请求体中最准确）
     const extractedIds = {
       meetingId:
@@ -199,12 +205,15 @@ async function handleAPIResponse(payload: {
         requestBodyMeetingIds.recordingId ||
         responseBodyMeetingIds.recordingId ||
         urlMeetingIds.recordingId,
-      shareId:
-        requestBodyMeetingIds.shareId || urlMeetingIds.shareId,
+      shareId: requestBodyMeetingIds.shareId || urlMeetingIds.shareId,
     };
 
     // 更新全局会议上下文（如果有新信息）
-    if (extractedIds.meetingId || extractedIds.recordingId || extractedIds.shareId) {
+    if (
+      extractedIds.meetingId ||
+      extractedIds.recordingId ||
+      extractedIds.shareId
+    ) {
       const now = Date.now();
       // 如果超过5分钟没有活动，或者检测到新的会议ID，重置上下文
       const isNewSession =
@@ -277,7 +286,7 @@ async function handleAPIResponse(payload: {
     // 保存缓存键到上下文
     currentMeetingContext.cacheKey = meetingKey;
 
-console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
+    console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
     console.log('[TXMeeting Background] 📌 当前上下文:', {
       meetingId: currentMeetingContext.meetingId,
       recordingId: currentMeetingContext.recordingId,
@@ -572,39 +581,14 @@ console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
         '[TXMeeting Background] ✅ 已存储 get-multi-record-file 响应'
       );
     } else if (apiType === 'query-summary-and-note') {
-      // 新的总结和笔记API，存储到mulSummaryAndTodo中
-      const response = payload.data as GetMulSummaryAndTodoResponse;
-      console.log('[TXMeeting Background] 🔍 收到 query-summary-and-note 响应');
-      console.log('  📊 响应数据概览:', {
-        hasData: !!response.data,
-        hasTopicSummary: !!response.data?.topic_summary,
-        hasChapterSummary: !!response.data?.chapter_summary,
-        hasSpeakerSummary: !!response.data?.speaker_summary,
-        hasTodo: !!response.data?.todo,
-      });
-      
-      // 初始化mulSummaryAndTodo对象
-      if (!cache.mulSummaryAndTodo) {
-        cache.mulSummaryAndTodo = {};
-      }
-      
-      // 根据响应数据中包含的字段进行存储
-      if (response.data?.topic_summary) {
-        cache.mulSummaryAndTodo.topicSummary = response;
-        console.log('  ✅ 已存储主题纪要 (topicSummary)');
-      }
-      if (response.data?.chapter_summary) {
-        cache.mulSummaryAndTodo.chapterSummary = response;
-        console.log('  ✅ 已存储分章节纪要 (chapterSummary)');
-      }
-      if (response.data?.speaker_summary || response.data?.todo) {
-        cache.mulSummaryAndTodo.speakerSummary = response;
-        console.log('  ✅ 已存储发言人观点+待办 (speakerSummary)');
-      }
-      console.log('[TXMeeting Background] ✅ 已存储 query-summary-and-note 响应');
+      // 新的总结和笔记API，存储到独立字段
+      cache.querySummaryAndNote = payload.data as QuerySummaryAndNoteResponse;
+      console.log(
+        '[TXMeeting Background] ✅ 已存储 query-summary-and-note 响应'
+      );
     } else if (apiType === 'query-timeline') {
-      // 新的时间线API，存储到timeLine中
-      cache.timeLine = payload.data as GetTimeLineResponse;
+      // 新的时间线API，存储到独立字段
+      cache.queryTimeline = payload.data as QueryTimelineResponse;
       console.log('[TXMeeting Background] ✅ 已存储 query-timeline 响应');
     }
 
@@ -720,11 +704,13 @@ console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
       }
     }
 
-    // 提取参会人员发言时长（优先使用新的query-timeline，回退到get-time-line）
-    if (cache.timeLine || cache.queryTimeline) {
-      const timelineData = cache.timeLine || cache.queryTimeline;
+    // 提取参会人员发言时长（仅使用旧版 get-time-line API）
+    // 注意：query-timeline 是叙事性事件，不包含参会者发言统计
+    if (cache.timeLine) {
       try {
-        statistics.participants = extractParticipantSpeakingTimes(timelineData!);
+        statistics.participants = extractParticipantSpeakingTimes(
+          cache.timeLine
+        );
         console.log(
           '[TXMeeting Background] ✅ 参会人员发言时长提取完成:',
           statistics.participants.length
@@ -737,15 +723,39 @@ console.log('[TXMeeting Background] 🔑 使用会议标识:', meetingKey);
       }
     }
 
-    // 提取会议章节（需要会议总时长）
-    if (cache.chapter && meetingData.metadata.duration) {
+    // 提取会议章节（优先使用已提取的 chapters，回退到旧 API）
+    if (meetingData.chapters && meetingData.chapters.length > 0) {
+      // 已有章节数据（来自 chapter_details、minutes 或 timeline_chapters）
+      const meetingDuration = meetingData.metadata?.duration || 0;
+      statistics.chapters = meetingData.chapters
+        .map((ch) => ({
+          id: ch.id,
+          title: ch.title,
+          startTime: ch.start_time,
+          coverUrl: undefined,
+          summary: ch.summary,
+          duration: ch.end_time > 0 ? ch.end_time - ch.start_time : 0,
+          percentage:
+            meetingDuration > 0
+              ? ((ch.end_time > 0 ? ch.end_time - ch.start_time : 0) /
+                  meetingDuration) *
+                100
+              : 0,
+          endTime: ch.end_time,
+        }))
+        .filter((ch) => ch.startTime >= 0);
+      console.log(
+        '[TXMeeting Background] ✅ 会议章节提取完成（来自已提取数据）:',
+        statistics.chapters.length
+      );
+    } else if (cache.chapter && meetingData.metadata.duration) {
       try {
         statistics.chapters = extractChapterInfos(
           cache.chapter,
           meetingData.metadata.duration
         );
         console.log(
-          '[TXMeeting Background] ✅ 会议章节提取完成:',
+          '[TXMeeting Background] ✅ 会议章节提取完成（来自旧API）:',
           statistics.chapters.length
         );
       } catch (error) {
@@ -893,7 +903,7 @@ function extractMeetingIdsFromURL(url: string): {
   try {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
-    
+
     // 从查询参数中提取
     const queryMeetingId =
       urlObj.searchParams.get('meeting_id') ||
@@ -905,7 +915,7 @@ function extractMeetingIdsFromURL(url: string): {
       urlObj.searchParams.get('record_id') ||
       undefined;
     const queryShareId = urlObj.searchParams.get('id') || undefined;
-    
+
     // 从路径中提取标识符（腾讯会议的cw/ct/crm格式）
     // 例如: /cw/NgP87vAg4b, /ct/23L8XO7Oe1, /crm/KwD9nW505d
     let pathShareId: string | undefined;
@@ -920,7 +930,7 @@ function extractMeetingIdsFromURL(url: string): {
         pathShareId
       );
     }
-    
+
     return {
       meetingId: queryMeetingId,
       recordingId: queryRecordingId,
@@ -1026,16 +1036,21 @@ function extractMeetingIdsFromRequestBody(
     // get-mul-summary-and-todo API（共享链接场景）
     // 以及新的query-summary-and-note, query-timeline API
     // 请求体格式: { meeting_id: '...', record_id: '...', share_id: '...', summary_type: 0 }
-    if (apiType === 'get-mul-summary-and-todo' || apiType === 'query-summary-and-note' || apiType === 'query-timeline') {
+    if (
+      apiType === 'get-mul-summary-and-todo' ||
+      apiType === 'query-summary-and-note' ||
+      apiType === 'query-timeline'
+    ) {
       const meetingId = requestBody?.meeting_id;
       const recordingId = requestBody?.record_id;
       const shareId = requestBody?.share_id;
 
       if (meetingId || recordingId || shareId) {
-        console.log(
-          `[TXMeeting Background] 📝 从 ${apiType} 请求体提取:`,
-          { meetingId, recordingId, shareId }
-        );
+        console.log(`[TXMeeting Background] 📝 从 ${apiType} 请求体提取:`, {
+          meetingId,
+          recordingId,
+          shareId,
+        });
       }
 
       return {

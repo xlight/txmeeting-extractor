@@ -12,6 +12,8 @@ import {
   extractFromMulSummaryAndTodo,
   extractFromSmartTopic,
   extractFromMultiRecordFile,
+  extractFromQuerySummaryAndNote,
+  extractFromQueryTimeline,
 } from '../utils/extractor';
 import {
   MinutesDetailResponse,
@@ -22,6 +24,8 @@ import {
   GetMulSummaryAndTodoResponse,
   GetSmartTopicResponse,
   GetMultiRecordFileResponse,
+  QuerySummaryAndNoteResponse,
+  QueryTimelineResponse,
 } from '../types/meeting';
 
 describe('Extractor Utility Functions', () => {
@@ -700,6 +704,287 @@ describe('Extractor Utility Functions', () => {
 
       const result = extractFromMultiRecordFile(mockResponse);
       expect(result).toEqual({});
+    });
+  });
+
+  // ==================== 新版页面 API 测试 ====================
+
+  describe('extractFromQuerySummaryAndNote', () => {
+    it('should extract official template summary with markdown content', () => {
+      const mockResponse: QuerySummaryAndNoteResponse = {
+        code: 0,
+        data: {
+          summary_version: 4,
+          is_audio_detect_complete: true,
+          official_template_summary: {
+            summary_template_id: '1001',
+            summary_template_title: '智能总结',
+            summary_infos: [
+              {
+                summary_id: 'S1',
+                content: '**会议主题**：测试会议',
+                ori_content: '',
+                time_list: [],
+                type: 0,
+              },
+              {
+                summary_id: 'S2',
+                content: '### 一、讨论要点\n\n- 要点1\n- 要点2',
+                ori_content: '',
+                time_list: [357],
+                type: 0,
+              },
+              {
+                summary_id: 'S3',
+                content: '### 二、待办事项\n\n- 任务1 **@张三**',
+                ori_content: '',
+                time_list: [600],
+                type: 0,
+              },
+            ],
+            status: 2,
+            lang: 'default',
+          },
+        },
+      };
+
+      const result = extractFromQuerySummaryAndNote(mockResponse);
+      expect(result.summary_version).toBe(4);
+      expect(result.official_template_summary_data).toBeDefined();
+      expect(
+        result.official_template_summary_data!.summary_template_title
+      ).toBe('智能总结');
+      expect(result.official_template_summary_data!.status).toBe(2);
+      expect(result.official_template_summary_data!.summary_infos).toHaveLength(
+        3
+      );
+
+      // 验证 Markdown 拼接
+      expect(result.official_template_summary_data!.full_markdown).toContain(
+        '**会议主题**：测试会议'
+      );
+      expect(result.official_template_summary_data!.full_markdown).toContain(
+        '### 一、讨论要点'
+      );
+      expect(result.official_template_summary_data!.full_markdown).toContain(
+        '### 二、待办事项'
+      );
+
+      // 验证时间戳转换（秒 -> 毫秒）
+      expect(
+        result.official_template_summary_data!.summary_infos[1].time_list[0]
+      ).toBe(357000);
+      expect(
+        result.official_template_summary_data!.summary_infos[2].time_list[0]
+      ).toBe(600000);
+    });
+
+    it('should return empty for status !== 2', () => {
+      const mockResponse: QuerySummaryAndNoteResponse = {
+        code: 0,
+        data: {
+          official_template_summary: {
+            summary_template_id: '1001',
+            summary_template_title: '智能总结',
+            summary_infos: [],
+            status: 0, // 生成中
+            lang: 'default',
+          },
+        },
+      };
+
+      const result = extractFromQuerySummaryAndNote(mockResponse);
+      expect(result.official_template_summary_data).toBeUndefined();
+    });
+
+    it('should return empty for invalid response', () => {
+      const mockResponse: QuerySummaryAndNoteResponse = {
+        code: 1,
+        data: undefined,
+      };
+
+      const result = extractFromQuerySummaryAndNote(mockResponse);
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('extractFromQueryTimeline', () => {
+    it('should convert timeline events to chapters', () => {
+      const mockResponse: QueryTimelineResponse = {
+        code: 0,
+        data: {
+          timeline_info: {
+            timeline_infos: [
+              {
+                id: 'RT1',
+                content: '会议进入核心议题讨论，回顾了项目进展。',
+                ori_content: '',
+                start_time: 5,
+              },
+              {
+                id: 'RT2',
+                content: '讨论了技术方案和实现细节。',
+                ori_content: '',
+                start_time: 200,
+              },
+              {
+                id: 'RT3',
+                content: '确定了后续工作安排和时间表。',
+                ori_content: '',
+                start_time: 474,
+              },
+            ],
+            status: 2,
+            lang: 'default',
+          },
+        },
+      };
+
+      const result = extractFromQueryTimeline(mockResponse);
+      expect(result.timeline_chapters).toBeDefined();
+      expect(result.timeline_chapters!).toHaveLength(3);
+
+      // 验证章节转换
+      expect(result.timeline_chapters![0].id).toBe('RT1');
+      expect(result.timeline_chapters![0].start_time).toBe(5000); // 5秒 -> 5000毫秒
+      expect(result.timeline_chapters![0].end_time).toBe(200000); // 200秒 -> 200000毫秒
+      expect(result.timeline_chapters![0].title.length).toBeLessThanOrEqual(33); // 30字符 + '...'
+
+      expect(result.timeline_chapters![1].start_time).toBe(200000);
+      expect(result.timeline_chapters![1].end_time).toBe(474000);
+
+      // 最后一个章节的 end_time 为 0
+      expect(result.timeline_chapters![2].start_time).toBe(474000);
+      expect(result.timeline_chapters![2].end_time).toBe(0);
+
+      // 验证 summary 包含完整内容
+      expect(result.timeline_chapters![0].summary).toContain(
+        '会议进入核心议题讨论'
+      );
+    });
+
+    it('should return empty for status !== 2', () => {
+      const mockResponse: QueryTimelineResponse = {
+        code: 0,
+        data: {
+          timeline_info: {
+            timeline_infos: [],
+            status: 0, // 生成中
+            lang: 'default',
+          },
+        },
+      };
+
+      const result = extractFromQueryTimeline(mockResponse);
+      expect(result.timeline_chapters).toBeUndefined();
+    });
+
+    it('should return empty for invalid response', () => {
+      const mockResponse: QueryTimelineResponse = {
+        code: 1,
+        data: undefined,
+      };
+
+      const result = extractFromQueryTimeline(mockResponse);
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('extractMeetingData with new APIs', () => {
+    it('should extract data from new query-summary-and-note API', () => {
+      const mockMinutesDetail: MinutesDetailResponse = {
+        code: 0,
+        minutes: {
+          lang: 'zh-CN',
+          paragraphs: [],
+          keywords: [],
+          chapters: [],
+          summary: '测试总结',
+        },
+        more: false,
+      };
+
+      const mockSummaryNote: QuerySummaryAndNoteResponse = {
+        code: 0,
+        data: {
+          summary_version: 4,
+          official_template_summary: {
+            summary_template_id: '1001',
+            summary_template_title: '智能总结',
+            summary_infos: [
+              {
+                summary_id: 'S1',
+                content: '# 标题\n\n内容',
+                ori_content: '',
+                time_list: [],
+                type: 0,
+              },
+            ],
+            status: 2,
+            lang: 'default',
+          },
+        },
+      };
+
+      const result = extractMeetingData({
+        minutesDetail: mockMinutesDetail,
+        querySummaryAndNote: mockSummaryNote,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.official_template_summary_data).toBeDefined();
+      expect(result!.official_template_summary_data!.full_markdown).toBe(
+        '# 标题\n\n内容'
+      );
+      expect(result!.summary_version).toBe(4);
+    });
+
+    it('should use timeline chapters as fallback when no chapter data', () => {
+      const mockMinutesDetail: MinutesDetailResponse = {
+        code: 0,
+        minutes: {
+          lang: 'zh-CN',
+          paragraphs: [],
+          keywords: [],
+          summary: '测试总结',
+        },
+        more: false,
+      };
+
+      const mockQueryTimeline: QueryTimelineResponse = {
+        code: 0,
+        data: {
+          timeline_info: {
+            timeline_infos: [
+              {
+                id: 'RT1',
+                content: '第一章内容',
+                ori_content: '',
+                start_time: 10,
+              },
+              {
+                id: 'RT2',
+                content: '第二章内容',
+                ori_content: '',
+                start_time: 60,
+              },
+            ],
+            status: 2,
+            lang: 'default',
+          },
+        },
+      };
+
+      const result = extractMeetingData({
+        minutesDetail: mockMinutesDetail,
+        queryTimeline: mockQueryTimeline,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.timeline_chapters).toHaveLength(2);
+      // 章节数据应该使用 timeline_chapters（因为没有其他章节来源）
+      expect(result!.chapters).toHaveLength(2);
+      expect(result!.chapters![0].id).toBe('RT1');
     });
   });
 });
