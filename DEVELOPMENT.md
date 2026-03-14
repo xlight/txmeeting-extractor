@@ -37,12 +37,14 @@ txmeeting-extractor/
 由于Chrome Manifest V3限制，我们采用了**Content Script + Service Worker**的组合方案：
 
 **Content Script** (`src/content/index.ts`):
+
 - 注入到腾讯会议页面
 - 拦截`window.fetch`和`XMLHttpRequest`
 - 检测腾讯会议API端点（`/wemeet-cloudrecording-webapi/`）
 - 将API响应发送到Background Script
 
 **Background Service Worker** (`src/background/index.ts`):
+
 - 接收Content Script发送的API响应
 - 调用数据提取器解析数据
 - 存储到`chrome.storage.local`
@@ -69,11 +71,13 @@ Popup请求数据时从storage读取
 ### 3. 数据提取 (`src/utils/extractor.ts`)
 
 **提取策略**:
+
 - 容错性：API字段可能使用不同命名（如`meeting_id`或`meetingId`）
 - XSS防护：所有用户生成内容经过`sanitizeText`清理
 - 类型安全：使用TypeScript严格类型检查
 
 **提取的数据类型**:
+
 1. 会议元数据（ID、标题、时长等）
 2. 智能总结和纪要
 3. 转写内容（含时间戳和发言人）
@@ -86,22 +90,28 @@ Popup请求数据时从storage读取
 ### 4. Markdown导出 (`src/utils/exporter.ts`)
 
 **导出格式**:
+
 ```markdown
 # 会议标题
 
 ## 会议信息
+
 - **会议 ID**: xxx
 - **时长**: xx分钟
 
 ## 💡 智能总结
+
 ...
 
 ## 🎙️ 转写内容
+
 ### [HH:MM:SS] 发言人
+
 转写文本...
 ```
 
 **特殊处理**:
+
 - Markdown特殊字符转义
 - 文件名清理（移除非法字符）
 - UTF-8编码确保中文正确显示
@@ -138,7 +148,7 @@ rollupOptions: {
 
 ### 加载扩展
 
-1. 运行 `npm run build`
+1. 运行 `pnpm run build`
 2. 打开Chrome，访问 `chrome://extensions/`
 3. 开启"开发者模式"
 4. 点击"加载已解压的扩展程序"
@@ -153,14 +163,17 @@ rollupOptions: {
 ### 常见问题
 
 **问题**: Content Script没有注入
+
 - 检查manifest中的`matches`是否匹配当前页面URL
 - 确保页面刷新后content script重新注入
 
 **问题**: API响应未被拦截
+
 - 检查Console是否有`[TXMeeting Content] 拦截到API请求`日志
 - 确认API endpoint包含`/wemeet-cloudrecording-webapi/`
 
 **问题**: Popup显示"未找到会议数据"
+
 - 确保先访问腾讯会议页面触发API请求
 - 检查Background Script是否成功存储数据（查看storage）
 
@@ -182,6 +195,7 @@ rollupOptions: {
 ### Service Worker生命周期
 
 MV3的Service Worker是非持久的，可能随时关闭。我们的策略：
+
 - 立即存储所有数据到storage
 - Popup每次打开都从storage读取
 - 不依赖内存中的状态
@@ -197,17 +211,16 @@ MV3的Service Worker是非持久的，可能随时关闭。我们的策略：
 ### XSS防护
 
 所有用户内容经过`sanitizeText()`处理：
+
 ```typescript
-text
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  // ... 更多转义
+text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// ... 更多转义
 ```
 
 ### 权限最小化
 
 仅请求必要权限：
+
 - `storage`: 缓存数据
 - `https://meeting.tencent.com/*`: 仅限腾讯会议域名
 
@@ -220,7 +233,7 @@ text
 ## 发布清单
 
 - [ ] 更新版本号（`manifest.json`和`package.json`）
-- [ ] 运行 `npm run build`
+- [ ] 运行 `pnpm run build`
 - [ ] 测试所有功能
 - [ ] 创建ZIP包：`cd dist && zip -r ../extension.zip *`
 - [ ] 准备Chrome Web Store资产（截图、描述等）

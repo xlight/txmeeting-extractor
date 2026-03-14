@@ -78,10 +78,10 @@ git clone https://github.com/xlight/txmeeting-extractor.git
 cd txmeeting-extractor
 
 # 2. 安装依赖
-npm install
+pnpm install
 
 # 3. 构建扩展
-npm run build
+pnpm run build
 
 # 4. 加载到 Chrome
 # - 打开 chrome://extensions/
@@ -93,7 +93,7 @@ npm run build
 **开发模式（自动重新构建）：**
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 #### 方式二：浏览器应用商店
@@ -249,19 +249,19 @@ Popup 请求数据时从 storage 读取
 
 ```bash
 # 开发模式（自动重新构建）
-npm run dev
+pnpm run dev
 
 # 类型检查
-npm run type-check
+pnpm run type-check
 
 # 构建生产版本
-npm run build
+pnpm run build
 
 # 打包为 ZIP（用于发布）
-npm run package
+pnpm run package
 
 # 重新生成图标
-npm run generate-icons
+pnpm run generate-icons
 ```
 
 ### 调试
