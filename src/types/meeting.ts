@@ -213,10 +213,10 @@ export interface ParticipantTimeline {
 }
 
 /**
- * 主题纪要数据 (summary_type=8)
- * 来自 get-mul-summary-and-todo API
+ * 纪要数据基础结构
+ * 主题纪要、DeepSeek纪要、模板纪要、纪要偏好等共享的字段
  */
-export interface TopicSummaryData {
+export interface SummaryDataBase {
   begin_summary: string; // 开场总结
   sub_points: Array<{
     // 要点列表
@@ -233,6 +233,12 @@ export interface TopicSummaryData {
   lang: string; // 语言
   model_status: number; // 模型状态
 }
+
+/**
+ * 主题纪要数据 (summary_type=8)
+ * 来自 get-mul-summary-and-todo API
+ */
+export interface TopicSummaryData extends SummaryDataBase {}
 
 /**
  * 分章节纪要数据 (summary_type=1)
@@ -280,64 +286,19 @@ export interface SpeakerSummaryData {
  * DeepSeek 纪要数据
  * 来自 get-mul-summary-and-todo API
  */
-export interface DeepSeekSummaryData {
-  begin_summary: string;
-  sub_points: Array<{
-    sub_point_title: string;
-    sub_point_vec_items: Array<{
-      point: string;
-      refs: any[];
-    }>;
-  }>;
-  end_summary: string;
-  custom_summary: string; // HTML格式
-  orig_custom_summary: string; // HTML格式
-  summary_status: number;
-  lang: string;
-  model_status: number;
-}
+export type DeepSeekSummaryData = SummaryDataBase;
 
 /**
  * 模板纪要数据
  * 来自 get-mul-summary-and-todo API
  */
-export interface TemplateSummaryData {
-  begin_summary: string;
-  sub_points: Array<{
-    sub_point_title: string;
-    sub_point_vec_items: Array<{
-      point: string;
-      refs: any[];
-    }>;
-  }>;
-  end_summary: string;
-  custom_summary: string;
-  orig_custom_summary: string;
-  summary_status: number;
-  lang: string;
-  model_status: number;
-}
+export type TemplateSummaryData = SummaryDataBase;
 
 /**
  * 纪要偏好设置（混元模型）
  * 来自 get-mul-summary-and-todo API
  */
-export interface SummaryPreferences {
-  begin_summary: string;
-  sub_points: Array<{
-    sub_point_title: string;
-    sub_point_vec_items: Array<{
-      point: string;
-      refs: any[];
-    }>;
-  }>;
-  end_summary: string;
-  custom_summary: string;
-  orig_custom_summary: string;
-  summary_status: number;
-  lang: string;
-  model_status: number;
-}
+export type SummaryPreferences = SummaryDataBase;
 
 /**
  * 待办事项数据
@@ -648,22 +609,7 @@ export interface GetMulSummaryAndTodoResponse {
       model_status?: number;
     };
     // 主题纪要 (summary_type=8)
-    topic_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    topic_summary?: Partial<SummaryDataBase>;
     // 发言人观点 (summary_type=4)
     speaker_summary?: {
       speakers_opinions?: Array<{
@@ -683,141 +629,21 @@ export interface GetMulSummaryAndTodoResponse {
       model_status?: number;
     };
     // DeepSeek 纪要
-    deepseek_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    deepseek_summary?: Partial<SummaryDataBase>;
     // DeepSeek R1 纪要（新字段）
-    ds_r1_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    ds_r1_summary?: Partial<SummaryDataBase>;
     // 模板纪要
-    template_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    template_summary?: Partial<SummaryDataBase>;
     // 混元纪要偏好（字段名 hunyuan，也可能是 summary_preferences）
-    hunyuan?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    hunyuan?: Partial<SummaryDataBase>;
     // 纪要偏好（实际 API 返回的字段名）
-    summary_preferences?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items?: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    summary_preferences?: Partial<SummaryDataBase>;
     // DSV3 纪要
-    dsv3_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    dsv3_summary?: Partial<SummaryDataBase>;
     // QW 纪要
-    qw_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    qw_summary?: Partial<SummaryDataBase>;
     // 元宝纪要
-    yuanbao_summary?: {
-      begin_summary?: string;
-      sub_points?: Array<{
-        sub_point_title: string;
-        sub_point_vec_items: Array<{
-          point: string;
-          refs: any[];
-        }>;
-      }>;
-      end_summary?: string;
-      custom_summary?: string;
-      orig_custom_summary?: string;
-      summary_status?: number;
-      lang?: string;
-      model_status?: number;
-    };
+    yuanbao_summary?: Partial<SummaryDataBase>;
     // 待办事项 (仅在 summary_type=4 时返回)
     todo?: {
       todo_list?: Array<{

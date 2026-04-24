@@ -3,6 +3,7 @@
  */
 
 import type { MeetingData } from '../../types/meeting';
+import { formatTimestamp } from '../../utils/extractor';
 
 /**
  * Strip HTML tags and convert to plain text
@@ -470,10 +471,19 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
       minutes += `**占比**: ${(topic.percentage * 100).toFixed(1)}%\n\n`;
       if (topic.scope && topic.scope.length > 0) {
         minutes += `**相关时间段**:\n`;
-        topic.scope.forEach((range) => {
+        // 合并连续时间段：当一段的 end_time 等于下一段的 start_time 时合并
+        const mergedRanges: Array<{ start: number; end: number }> = [];
+        for (const range of topic.scope) {
           const startMs = parseInt(range.start_time);
           const endMs = parseInt(range.end_time);
-          minutes += `- ${formatTime(startMs)} - ${formatTime(endMs)}\n`;
+          if (mergedRanges.length > 0 && mergedRanges[mergedRanges.length - 1].end === startMs) {
+            mergedRanges[mergedRanges.length - 1].end = endMs;
+          } else {
+            mergedRanges.push({ start: startMs, end: endMs });
+          }
+        }
+        mergedRanges.forEach((range) => {
+          minutes += `- ${formatTime(range.start)} - ${formatTime(range.end)}\n`;
         });
         minutes += `\n`;
       }
@@ -483,12 +493,24 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
   // 章节内容
   if (meetingData.chapters && meetingData.chapters.length > 0) {
     minutes += `## 会议章节\n\n`;
+    const meetingDuration = meetingData.metadata?.duration || 0;
     meetingData.chapters.forEach((chapter, index) => {
       minutes += `### ${index + 1}. ${chapter.title}\n\n`;
       if (chapter.summary) {
         minutes += `${chapter.summary}\n\n`;
       }
-      minutes += `*${formatTime(chapter.start_time)} - ${formatTime(chapter.end_time)}*\n\n`;
+      // 当 end_time 无效时，用下一个章节的 start_time 或会议总时长推算
+      const hasValidEndTime =
+        chapter.end_time !== undefined &&
+        chapter.end_time !== null &&
+        !isNaN(chapter.end_time) &&
+        chapter.end_time > 0;
+      const endTime = hasValidEndTime
+        ? chapter.end_time
+        : index < meetingData.chapters.length - 1
+          ? meetingData.chapters[index + 1].start_time
+          : meetingDuration;
+      minutes += `*${formatTime(chapter.start_time)} - ${formatTime(endTime)}*\n\n`;
     });
   }
 
@@ -511,5 +533,120 @@ export function generateMarkdownMinutes(meetingData: MeetingData): string {
     minutes += `\n`;
   }
 
+
+  // 聊天记录
+  if (meetingData.chat_messages && meetingData.chat_messages.length > 0) {
+    minutes += `## 聊天记录\n\n`;
+    meetingData.chat_messages.forEach((msg) => {
+      const time = formatTimestamp(msg.timestamp);
+      minutes += `**${msg.sender_name}** (${time}):\n`;
+      minutes += `> ${msg.content}\n\n`;
+    });
+  }
+
+  // 重点时刻
+  if (meetingData.highlights && meetingData.highlights.length > 0) {
+    minutes += `## 重点时刻\n\n`;
+    meetingData.highlights.forEach((h) => {
+      const time = formatTimestamp(h.timestamp);
+      minutes += `- **[${time}]** ${h.description}\n`;
+      if (h.content) {
+        minutes += `  > ${h.content}\n`;
+      }
+    });
+    minutes += `\n`;
+  }
   return minutes;
+}
+
+
+/**
+ * 转义Markdown特殊字符
+ */
+export function escapeMarkdown(text: string): string {
+  // 反转义HTML实体（因为extractor中已经转义过了）
+  const unescaped = text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
+
+  // 转义Markdown特殊字符
+  return unescaped
+    .replace(/\\/g, '\\\\')
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)')
+    .replace(/#/g, '\\#')
+    .replace(/\+/g, '\\+')
+    .replace(/-/g, '\\-')
+    .replace(/\./g, '\\.')
+    .replace(/!/g, '\\!')
+    .replace(/`/g, '\\`');
+}
+
+/**
+ * 生成文件名
+ */
+export function generateFilename(data: MeetingData): string {
+  // 清理标题，移除非法文件名字符
+  const cleanTitle = data.metadata.title
+    .replace(/[<>:"/\\|?*]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 50); // 限制长度
+
+  // 生成日期
+  const date = data.metadata.start_time
+    ? new Date(data.metadata.start_time)
+    : new Date();
+  const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  return `${cleanTitle}-${dateStr}.md`;
+}
+
+/**
+ * 触发Markdown文件下载
+ */
+export function downloadMarkdown(content: string, filename: string): void {
+  // 创建Blob
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  // 创建下载链接
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+
+  // 触发下载
+  document.body.appendChild(a);
+  a.click();
+
+  // 清理
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+/**
+ * 导出会议数据为Markdown文件
+ */
+export function exportToMarkdown(data: MeetingData): void {
+  const markdown = generateMarkdownMinutes(data);
+  const filename = generateFilename(data);
+
+  downloadMarkdown(markdown, filename);
+}
+
+/**
+ * 复制Markdown到剪贴板
+ */
+export function copyMarkdownToClipboard(data: MeetingData): Promise<void> {
+  const markdown = generateMarkdownMinutes(data);
+  return navigator.clipboard.writeText(markdown);
 }

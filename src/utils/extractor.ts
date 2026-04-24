@@ -53,7 +53,9 @@ import {
   OfficialTemplateSummaryData,
   isQuerySummaryAndNoteResponse,
   isQueryTimelineResponse,
+  SummaryDataBase,
 } from '../types/meeting';
+import { formatDuration } from './format';
 
 /**
  * 从 minutes/detail API 响应中提取数据
@@ -525,23 +527,7 @@ export function formatTimestamp(timestamp: number): string {
   });
 }
 
-/**
- * 格式化时长（毫秒）为可读格式
- */
-export function formatDuration(milliseconds: number): string {
-  const seconds = Math.floor(milliseconds / 1000);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
 
-  if (hours > 0) {
-    return `${hours}小时${minutes}分钟`;
-  } else if (minutes > 0) {
-    return `${minutes}分钟${secs}秒`;
-  } else {
-    return `${secs}秒`;
-  }
-}
 
 /**
  * 验证会议数据的完整性
@@ -632,6 +618,27 @@ export function extractFromTimeLine(
  * 从 get-mul-summary-and-todo API 的多个响应中提取数据
  * @param responses - 包含三种纪要类型响应的对象
  */
+/**
+ * 通用 AI 纪要数据提取函数
+ * 从 Partial<SummaryDataBase> 源数据中提取并填充默认值
+ */
+function extractAISummary(source: Partial<SummaryDataBase> | undefined): SummaryDataBase | null {
+  if (!source) return null;
+  return {
+    begin_summary: source.begin_summary || '',
+    sub_points: (source.sub_points || []).map((point) => ({
+      sub_point_title: point.sub_point_title,
+      sub_point_vec_items: point.sub_point_vec_items || [],
+    })),
+    end_summary: source.end_summary || '',
+    custom_summary: source.custom_summary || '',
+    orig_custom_summary: source.orig_custom_summary || '',
+    summary_status: source.summary_status || 0,
+    lang: source.lang || '',
+    model_status: source.model_status || 0,
+  };
+}
+
 export function extractFromMulSummaryAndTodo(responses: {
   topicSummary?: GetMulSummaryAndTodoResponse;
   chapterSummary?: GetMulSummaryAndTodoResponse;
@@ -877,115 +884,52 @@ export function extractFromMulSummaryAndTodo(responses: {
   }
 
   // 提取模板纪要数据
-  if (responses.topicSummary?.data?.template_summary) {
-    const templateData = responses.topicSummary.data.template_summary;
-    console.log('[Extractor] 🔍 提取模板纪要数据');
-
-    result.template_summary_data = {
-      begin_summary: templateData.begin_summary || '',
-      sub_points: templateData.sub_points || [],
-      end_summary: templateData.end_summary || '',
-      custom_summary: templateData.custom_summary || '',
-      orig_custom_summary: templateData.orig_custom_summary || '',
-      summary_status: templateData.summary_status || 0,
-      lang: templateData.lang || '',
-      model_status: templateData.model_status || 0,
-    };
-
+  const templateResult = extractAISummary(responses.topicSummary?.data?.template_summary as Partial<SummaryDataBase> | undefined);
+  if (templateResult) {
+    result.template_summary_data = templateResult;
     console.log('[Extractor] ✅ 模板纪要提取完成:', {
-      pointsCount: result.template_summary_data.sub_points.length,
-      status: result.template_summary_data.summary_status,
+      pointsCount: templateResult.sub_points.length,
+      status: templateResult.summary_status,
     });
   }
 
   // 提取混元纪要偏好数据（字段名是 summary_preferences，不是 hunyuan）
-  if (responses.topicSummary?.data?.summary_preferences) {
-    const preferencesData = responses.topicSummary.data.summary_preferences;
-    console.log('[Extractor] 🔍 提取纪要偏好数据（混元模型）');
-
-    result.summary_preferences = {
-      begin_summary: preferencesData.begin_summary || '',
-      sub_points: (preferencesData.sub_points || []).map((point) => ({
-        sub_point_title: point.sub_point_title,
-        sub_point_vec_items: point.sub_point_vec_items || [],
-      })),
-      end_summary: preferencesData.end_summary || '',
-      custom_summary: preferencesData.custom_summary || '',
-      orig_custom_summary: preferencesData.orig_custom_summary || '',
-      summary_status: preferencesData.summary_status || 0,
-      lang: preferencesData.lang || '',
-      model_status: preferencesData.model_status || 0,
-    };
-
+  const preferencesResult = extractAISummary(responses.topicSummary?.data?.summary_preferences as Partial<SummaryDataBase> | undefined);
+  if (preferencesResult) {
+    result.summary_preferences = preferencesResult;
     console.log('[Extractor] ✅ 纪要偏好提取完成:', {
-      pointsCount: result.summary_preferences?.sub_points.length || 0,
-      status: result.summary_preferences?.summary_status || 0,
+      pointsCount: preferencesResult.sub_points.length,
+      status: preferencesResult.summary_status,
     });
   }
 
   // 提取 DSV3 纪要数据
-  if (responses.topicSummary?.data?.dsv3_summary) {
-    const dsv3Data = responses.topicSummary.data.dsv3_summary;
-    console.log('[Extractor] 🔍 提取 DSV3 纪要数据');
-
-    result.dsv3_summary_data = {
-      begin_summary: dsv3Data.begin_summary || '',
-      sub_points: dsv3Data.sub_points || [],
-      end_summary: dsv3Data.end_summary || '',
-      custom_summary: dsv3Data.custom_summary || '',
-      orig_custom_summary: dsv3Data.orig_custom_summary || '',
-      summary_status: dsv3Data.summary_status || 0,
-      lang: dsv3Data.lang || '',
-      model_status: dsv3Data.model_status || 0,
-    };
-
+  const dsv3Result = extractAISummary(responses.topicSummary?.data?.dsv3_summary as Partial<SummaryDataBase> | undefined);
+  if (dsv3Result) {
+    result.dsv3_summary_data = dsv3Result;
     console.log('[Extractor] ✅ DSV3 纪要提取完成:', {
-      pointsCount: result.dsv3_summary_data.sub_points.length,
-      status: result.dsv3_summary_data.summary_status,
+      pointsCount: dsv3Result.sub_points.length,
+      status: dsv3Result.summary_status,
     });
   }
 
   // 提取 QW 纪要数据
-  if (responses.topicSummary?.data?.qw_summary) {
-    const qwData = responses.topicSummary.data.qw_summary;
-    console.log('[Extractor] 🔍 提取 QW 纪要数据');
-
-    result.qw_summary_data = {
-      begin_summary: qwData.begin_summary || '',
-      sub_points: qwData.sub_points || [],
-      end_summary: qwData.end_summary || '',
-      custom_summary: qwData.custom_summary || '',
-      orig_custom_summary: qwData.orig_custom_summary || '',
-      summary_status: qwData.summary_status || 0,
-      lang: qwData.lang || '',
-      model_status: qwData.model_status || 0,
-    };
-
+  const qwResult = extractAISummary(responses.topicSummary?.data?.qw_summary as Partial<SummaryDataBase> | undefined);
+  if (qwResult) {
+    result.qw_summary_data = qwResult;
     console.log('[Extractor] ✅ QW 纪要提取完成:', {
-      pointsCount: result.qw_summary_data.sub_points.length,
-      status: result.qw_summary_data.summary_status,
+      pointsCount: qwResult.sub_points.length,
+      status: qwResult.summary_status,
     });
   }
 
   // 提取元宝纪要数据
-  if (responses.topicSummary?.data?.yuanbao_summary) {
-    const yuanbaoData = responses.topicSummary.data.yuanbao_summary;
-    console.log('[Extractor] 🔍 提取元宝纪要数据');
-
-    result.yuanbao_summary_data = {
-      begin_summary: yuanbaoData.begin_summary || '',
-      sub_points: yuanbaoData.sub_points || [],
-      end_summary: yuanbaoData.end_summary || '',
-      custom_summary: yuanbaoData.custom_summary || '',
-      orig_custom_summary: yuanbaoData.orig_custom_summary || '',
-      summary_status: yuanbaoData.summary_status || 0,
-      lang: yuanbaoData.lang || '',
-      model_status: yuanbaoData.model_status || 0,
-    };
-
+  const yuanbaoResult = extractAISummary(responses.topicSummary?.data?.yuanbao_summary as Partial<SummaryDataBase> | undefined);
+  if (yuanbaoResult) {
+    result.yuanbao_summary_data = yuanbaoResult;
     console.log('[Extractor] ✅ 元宝纪要提取完成:', {
-      pointsCount: result.yuanbao_summary_data.sub_points.length,
-      status: result.yuanbao_summary_data.summary_status,
+      pointsCount: yuanbaoResult.sub_points.length,
+      status: yuanbaoResult.summary_status,
     });
   }
 

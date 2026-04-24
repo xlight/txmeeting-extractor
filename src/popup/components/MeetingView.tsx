@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MeetingData } from '../../types/meeting';
-import { formatTimestamp, formatDuration } from '../../utils/extractor';
+import { formatTimestamp } from '../../utils/extractor';
+import { formatDuration } from '../../utils/format';
 
 interface MeetingViewProps {
   data: MeetingData;

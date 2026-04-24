@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUIState } from '../../contexts/UIStateContext';
 import { useMeetingData } from '../../contexts/MeetingDataContext';
-import { generateMarkdownMinutes } from '../../utils/minutes';
+import { generateMarkdownMinutes } from '../../utils/markdown-generator';
 import { useVersionInfo, formatVersionDisplay } from '../../hooks/useVersionInfo';
 import type { ViewMode } from '../../types/ui';
 import styles from './TopBar.module.css';

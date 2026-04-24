@@ -1,5 +1,5 @@
 import { MeetingData } from '../types/meeting';
-import { generateMarkdown, copyMarkdownToClipboard } from '../utils/exporter';
+import { generateMarkdownMinutes, copyMarkdownToClipboard } from '../popup/utils/markdown-generator';
 
 describe('Exporter Utility Functions', () => {
   describe('generateMarkdown', () => {
@@ -76,26 +76,23 @@ describe('Exporter Utility Functions', () => {
         captured_at: Date.now(),
       };
 
-      const markdown = generateMarkdown(mockMeetingData);
+      const markdown = generateMarkdownMinutes(mockMeetingData);
 
       // Check that the markdown contains expected sections
       expect(markdown).toContain('# Test Meeting');
       expect(markdown).toContain('## 会议信息');
       expect(markdown).toContain('**会议 ID**: meeting123');
-      expect(markdown).toContain('**录制 ID**: rec123');
-      expect(markdown).toContain('**时长**: 1小时0分钟');
-      expect(markdown).toContain('## 💡 智能总结');
-      expect(markdown).toContain('This is a summary of the meeting\\.');
-      expect(markdown).toContain('## 👥 参会人员');
+      expect(markdown).toContain('**会议时长**: 1小时');
+      expect(markdown).toContain('## 会议纪要');
+      expect(markdown).toContain('This is a summary of the meeting.');
+      expect(markdown).toContain('## 参与者');
       expect(markdown).toContain('John Doe');
       expect(markdown).toContain('Jane Smith');
-      expect(markdown).toContain('## ✅ 行动项');
-      expect(markdown).toContain('Complete the project proposal');
-      expect(markdown).toContain('## 🎙️ 转写内容');
-      expect(markdown).toContain('[00:00:01] John Doe');
-      expect(markdown).toContain('Hello everyone, welcome to the meeting\\.');
-      expect(markdown).toContain('[00:00:06] Jane Smith');
-      expect(markdown).toContain('Thank you for joining us today\\.');
+      expect(markdown).toContain('## 会议转写');
+      expect(markdown).toContain('John Doe');
+      expect(markdown).toContain('Hello everyone, welcome to the meeting.');
+      expect(markdown).toContain('Jane Smith');
+      expect(markdown).toContain('Thank you for joining us today.');
     });
 
     it('should handle missing optional fields gracefully', () => {
@@ -109,15 +106,13 @@ describe('Exporter Utility Functions', () => {
         captured_at: Date.now(),
       };
 
-      const markdown = generateMarkdown(minimalMeetingData);
+      const markdown = generateMarkdownMinutes(minimalMeetingData);
 
       expect(markdown).toContain('# Minimal Meeting');
       expect(markdown).toContain('## 会议信息');
       expect(markdown).toContain('**会议 ID**: meeting123');
-      expect(markdown).toContain('**录制 ID**: rec123');
-      expect(markdown).not.toContain('## 💡 智能总结');
-      expect(markdown).not.toContain('## 👥 参会人员');
-      expect(markdown).not.toContain('## ✅ 行动项');
+      expect(markdown).not.toContain('## 会议纪要');
+      expect(markdown).not.toContain('## 参与者');
     });
 
     it('should format transcript with proper timestamps', () => {
@@ -146,11 +141,11 @@ describe('Exporter Utility Functions', () => {
         captured_at: Date.now(),
       };
 
-      const markdown = generateMarkdown(meetingDataWithTranscript);
+      const markdown = generateMarkdownMinutes(meetingDataWithTranscript);
 
-      expect(markdown).toContain('[00:00:00] Speaker 1');
+      expect(markdown).toContain('Speaker 1');
       expect(markdown).toContain('First message');
-      expect(markdown).toContain('[00:01:01] Speaker 2');
+      expect(markdown).toContain('Speaker 2');
       expect(markdown).toContain('Second message after 1 minute and 5 seconds');
     });
 
@@ -174,7 +169,7 @@ describe('Exporter Utility Functions', () => {
         captured_at: Date.now(),
       };
 
-      const markdown = generateMarkdown(meetingDataWithMaliciousContent);
+      const markdown = generateMarkdownMinutes(meetingDataWithMaliciousContent);
 
       // Check that malicious content is sanitized - basic check
       expect(markdown).toContain('<script>alert');

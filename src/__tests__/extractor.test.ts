@@ -4,7 +4,6 @@ import {
   extractFromCommonRecordInfo,
   sanitizeText,
   formatTimestamp,
-  formatDuration,
   validateMeetingData,
   extractFromFullSummary,
   extractFromChapter,
@@ -15,6 +14,7 @@ import {
   extractFromQuerySummaryAndNote,
   extractFromQueryTimeline,
 } from '../utils/extractor';
+import { formatDuration } from '../utils/format';
 import {
   MinutesDetailResponse,
   CommonRecordInfoResponse,
